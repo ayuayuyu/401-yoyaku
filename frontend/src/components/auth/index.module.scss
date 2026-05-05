@@ -1,0 +1,58 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 90vh;
+
+  .container {
+    width: 360px;
+    margin: 0px auto;
+    text-align: center;
+    padding: 2em;
+    //   border: solid 3px $color-blue;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+
+    .roomTitle {
+      font-size: $font-size-middle;
+      font-weight: $font-weight-max;
+      margin-bottom: 0.5rem;
+    }
+
+    .systemTitle {
+      font-size: $font-size-default;
+      font-weight: $font-weight-medium;
+      color: $color-gray;
+    }
+
+    .loginDescription {
+      margin-bottom: 1rem;
+      font-size: $font-size-default;
+      color: $color-black;
+    }
+    .loginButton {
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      background-color: $color-blue;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .loginButton:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .policyNotice {
+      font-size: $font-size-min;
+      color: $color-gray2;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+.env
+.DS_Store
+
+# Build artifacts
+src/tmp/
+src/yoyaku

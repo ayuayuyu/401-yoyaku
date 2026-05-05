@@ -1,0 +1,154 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background: linear-gradient(180deg, #f4f7fb 0%, #eef3f9 100%);
+
+  .calendarContainer {
+    flex: 1;
+    min-height: 0;
+    margin: 8px 24px;
+    border-radius: 12px;
+    background: transparent;
+    box-shadow: none;
+
+    .view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      margin: 0 20px 8px;
+      border: none;
+      border-radius: 0;
+      overflow: hidden;
+
+      > * {
+        flex: 1;
+        min-height: 0;
+      }
+
+      :global(.sx-react-calendar-wrapper) {
+        height: 100%;
+        min-height: 0;
+      }
+
+      :global(.sx__view-selection),
+      :global(.sx__date-input-wrapper) {
+        display: none;
+      }
+
+      :global(.sx__custom-new-reservation) {
+        padding: 8px 16px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: $color-white;
+        background-color: $color-blue;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(66, 133, 244, 0.2);
+        transition:
+          background-color 0.15s ease,
+          box-shadow 0.15s ease,
+          transform 0.05s ease;
+
+        &:hover {
+          background-color: #3367d6;
+          box-shadow: 0 2px 6px rgba(66, 133, 244, 0.35);
+        }
+
+        &:active {
+          transform: translateY(1px);
+          box-shadow: 0 1px 2px rgba(66, 133, 244, 0.25);
+        }
+
+        &:focus-visible {
+          outline: 2px solid #1a73e8;
+          outline-offset: 2px;
+        }
+      }
+
+      :global(.sx__month-grid) {
+        height: 100%;
+        display: grid;
+        grid-template-rows: auto repeat(6, 1fr);
+      }
+
+      :global(.sx__month-grid-week) {
+        min-height: 0;
+      }
+
+      :global(.sx__week-view),
+      :global(.sx__day-view),
+      :global(.sx__time-grid) {
+        height: 100%;
+      }
+
+      :global(.sx__time-grid) {
+        overflow-y: auto;
+      }
+
+      :global(.sx__month-grid-day) {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      :global(.sx__month-grid-day__events) {
+        grid-gap: 2px;
+        overflow: hidden;
+      }
+
+      :global(.sx__month-grid-event) {
+        height: 24px;
+        line-height: 24px;
+        padding: 0 8px;
+        gap: 4px;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        font-size: 0.85rem;
+        border-radius: 4px;
+      }
+
+      :global(.sx__month-grid-event-time) {
+        flex: 0 0 auto;
+      }
+
+      :global(.sx__month-grid-event-title) {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      :global(.sx__month-grid-day__events-more) {
+        margin: 2px 0 0;
+        padding: 2px 4px;
+        line-height: 1.2;
+      }
+
+      :global(.sx__month-grid-day__header-date) {
+        min-height: 36px;
+        min-width: 36px;
+        font-size: 0.95rem;
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    .calendarContainer {
+      margin: 4px 12px;
+
+      .view {
+        margin: 0 10px 4px;
+
+        :global(.sx__custom-new-reservation) {
+          padding: 6px 10px;
+          font-size: 0.85rem;
+        }
+      }
+    }
+  }
+}

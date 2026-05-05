@@ -1,0 +1,58 @@
+// 予約の基本型
+export interface Reservation {
+  id: number;
+  user_id: number;
+  title: string;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// ユーザー名付き予約データ（JOINクエリのレスポンス）
+export interface ReservationWithUser {
+  id: number;
+  user_id: number;
+  title: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  user_name: string;
+}
+
+// 予約作成・更新リクエスト
+export interface CreateReservationRequest {
+  title: string;
+  start_time: string;
+  end_time: string;
+}
+
+// 予約作成レスポンス
+export interface ReservationResponse {
+  status: string;
+  id: number;
+  user_id: number;
+  title: string;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 一覧取得APIの共通レスポンス
+export interface ReservationListResponse {
+  status: string;
+  data: ReservationWithUser[];
+}
+
+// ユーザー予約一覧のレスポンス
+export interface MyReservationsResponse {
+  status: string;
+  data: Reservation[];
+}
+
+// キャンセルレスポンス
+export interface CancelResponse {
+  status: string;
+  message: string;
+}

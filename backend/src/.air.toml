@@ -1,0 +1,18 @@
+root = "."
+
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/app ."
+  bin = "tmp/app"
+  delay = 1000
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  poll = true
+  poll_interval = 1000
+
+[log]
+  time = true
+
+[screen]
+  clear_on_rebuild = true

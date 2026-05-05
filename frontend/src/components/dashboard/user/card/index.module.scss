@@ -1,0 +1,67 @@
+.card {
+  background-color: $color-white;
+  border: 1px solid $color-light-blue;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .cardTitle {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: $color-black;
+    border-left: 4px solid $color-blue;
+    padding-left: 12px;
+  }
+
+  .cardInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: $color-gray;
+
+    svg {
+      font-size: 1.1rem;
+    }
+    span {
+      font-size: 0.95rem;
+      color: $color-black;
+    }
+  }
+
+  .cardActions {
+    margin-top: auto; // ボタンをカード下部に配置
+    padding-top: 16px;
+    border-top: 1px solid $color-light-blue;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+
+    button {
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: opacity 0.2s;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+
+    .editButton {
+      color: $color-blue;
+    }
+
+    .deleteButton {
+      color: $color-red;
+    }
+  }
+}

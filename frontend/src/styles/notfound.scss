@@ -1,0 +1,16 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 90vh;
+  .container {
+    text-align: center;
+    .comment {
+      font-size: $font-size-middle;
+    }
+    .back-button {
+      font-size: $font-size-semi-middle;
+      color: $color-gray;
+    }
+  }
+}

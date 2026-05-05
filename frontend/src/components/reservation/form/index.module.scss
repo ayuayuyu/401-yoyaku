@@ -1,0 +1,114 @@
+.container {
+  .formGroup {
+    margin-bottom: 1.5rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: $font-weight-medium;
+      color: $color-black;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 95%;
+      padding: 0.75rem;
+      border: 2px solid $color-white;
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: $color-blue;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+  }
+
+  .timeSelectRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    select {
+      flex: 1;
+      width: auto;
+      padding: 0.75rem 0.5rem;
+      border: 2px solid $color-white;
+      border-radius: 6px;
+      font-size: 1.05rem;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      text-align-last: center;
+      background-color: white;
+      cursor: pointer;
+      transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+
+      &:hover {
+        border-color: $color-blue-gray;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: $color-blue;
+        box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.15);
+      }
+    }
+  }
+
+  .timeSeparator {
+    font-size: 1.25rem;
+    font-weight: $font-weight-medium;
+    color: $color-gray;
+    user-select: none;
+  }
+
+  .formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .formActions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+
+    .cancelBtn,
+    .submitBtn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .cancelBtn {
+      background: $color-gray;
+      color: white;
+
+      &:hover {
+        background: $color-gray;
+      }
+    }
+
+    .submitBtn {
+      background: $color-light-green;
+      color: white;
+
+      &:hover {
+        background: $color-green;
+      }
+    }
+  }
+}

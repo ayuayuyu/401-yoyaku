@@ -1,0 +1,67 @@
+services:
+  yoyaku:
+    container_name: 401-yoyaku
+    build:
+      context: .
+      dockerfile: ./build/go/Dockerfile
+    volumes:
+      - ./src:/go/src/app
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      - PORT=${PORT:-8080}
+      - DATABASE_URL=${DATABASE_URL}
+    tty: true
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - private-net
+  frontend:
+    container_name: 401-yoyaku-frontend
+    build:
+      context: ../yoyaku-frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ../yoyaku-frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - CHOKIDAR_USEPOLLING=1
+      - WATCHPACK_POLLING=true
+    depends_on:
+      yoyaku:
+        condition: service_started
+    networks:
+      - private-net
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Tokyo
+    ports:
+      - 55432:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d app" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - private-net
+
+volumes:
+  db-data:
+
+networks:
+  private-net:
+    driver: bridge
