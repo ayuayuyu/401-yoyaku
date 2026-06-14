@@ -8,12 +8,22 @@
   flex-direction: column;
   gap: 16px;
 
+  .cardHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
   .cardTitle {
+    flex: 1;
+    min-width: 0;
     font-size: 1.2rem;
     font-weight: 500;
     color: $color-black;
     border-left: 4px solid $color-blue;
     padding-left: 12px;
+    word-break: break-word;
   }
 
   .cardInfo {
@@ -29,6 +39,17 @@
       font-size: 0.95rem;
       color: $color-black;
     }
+  }
+
+  .cardNotes {
+    padding: 12px;
+    background-color: $color-light-blue-gray;
+    border-radius: 6px;
+    color: $color-black;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .cardActions {
@@ -64,4 +85,46 @@
       color: $color-red;
     }
   }
+
+  // 終了した予約は淡色化して、開始前・進行中と一目で区別できるようにする。
+  &.ended {
+    background-color: $color-white2;
+    border-color: $color-border;
+    box-shadow: none;
+
+    .cardTitle {
+      border-left-color: $color-blue-gray;
+      color: $color-gray;
+    }
+
+    .cardInfo span {
+      color: $color-gray;
+    }
+  }
+}
+
+.statusBadge {
+  flex: 0 0 auto;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+// 開始前 = 青 / 進行中 = 緑 / 終了 = グレー。
+.statusUpcoming {
+  background-color: $color-blue;
+  color: $color-white;
+}
+
+.statusOngoing {
+  background-color: $color-green;
+  color: $color-white;
+}
+
+.statusEnded {
+  background-color: $color-blue-gray;
+  color: $color-white;
 }

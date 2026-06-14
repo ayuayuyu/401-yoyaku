@@ -5,6 +5,22 @@ import { parseApiError } from '@/lib/api/error';
 import FeedbackModal from '@/components/base/feedbackModal';
 import EditReservationModal from '../editModal';
 import styles from './index.module.scss';
+
+// 予約の時間的な状態。開始前 → 進行中 → 終了 と遷移する。
+export type ReservationStatus = 'upcoming' | 'ongoing' | 'ended';
+
+const STATUS_LABEL: Record<ReservationStatus, string> = {
+  upcoming: '開始前',
+  ongoing: '進行中',
+  ended: '終了',
+};
+
+const STATUS_CLASS: Record<ReservationStatus, string> = {
+  upcoming: styles.statusUpcoming,
+  ongoing: styles.statusOngoing,
+  ended: styles.statusEnded,
+};
+
 // 予約オブジェクトの型
 interface Reservation {
   id: number;
@@ -12,6 +28,7 @@ interface Reservation {
   title: string;
   start_time: string;
   end_time: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -19,8 +36,14 @@ interface Reservation {
 interface ReservationCardProps {
   reservation: Reservation;
   onUpdate: () => void;
+  status: ReservationStatus;
 }
-const ReservationCard = ({ reservation, onUpdate }: ReservationCardProps) => {
+const ReservationCard = ({
+  reservation,
+  onUpdate,
+  status,
+}: ReservationCardProps) => {
+  const isEnded = status === 'ended';
   const startDate = new Date(reservation.start_time);
   const endDate = new Date(reservation.end_time);
   const creationDate = new Date(reservation.created_at);
@@ -85,8 +108,13 @@ const ReservationCard = ({ reservation, onUpdate }: ReservationCardProps) => {
 
   return (
     <div>
-      <div className={styles.card}>
-        <div className={styles.cardTitle}>{reservation.title}</div>
+      <div className={`${styles.card}${isEnded ? ` ${styles.ended}` : ''}`}>
+        <div className={styles.cardHeader}>
+          <div className={styles.cardTitle}>{reservation.title}</div>
+          <span className={`${styles.statusBadge} ${STATUS_CLASS[status]}`}>
+            {STATUS_LABEL[status]}
+          </span>
+        </div>
         <div className={styles.cardInfo}>
           <MdiCalendar />
           <span>{displayDate}</span>
@@ -99,17 +127,22 @@ const ReservationCard = ({ reservation, onUpdate }: ReservationCardProps) => {
           <MdiHistory />
           <span>予約作成日: {displayCreatedAt}</span>
         </div>
-        <div className={styles.cardActions}>
-          <button onClick={handleEdit} className={styles.editButton}>
-            編集
-          </button>
-          <button
-            onClick={() => setConfirmCancelOpen(true)}
-            className={styles.deleteButton}
-          >
-            キャンセル
-          </button>
-        </div>
+        {reservation.notes?.trim() && (
+          <div className={styles.cardNotes}>{reservation.notes}</div>
+        )}
+        {!isEnded && (
+          <div className={styles.cardActions}>
+            <button onClick={handleEdit} className={styles.editButton}>
+              編集
+            </button>
+            <button
+              onClick={() => setConfirmCancelOpen(true)}
+              className={styles.deleteButton}
+            >
+              キャンセル
+            </button>
+          </div>
+        )}
       </div>
       {isEditing && (
         <EditReservationModal
