@@ -5,24 +5,35 @@ import styles from './index.module.scss';
 
 interface UserIconProps {
   onClick: () => void;
+  expanded?: boolean;
 }
 
-const UserIcon = ({ onClick }: UserIconProps) => {
+const UserIcon = ({ onClick, expanded }: UserIconProps) => {
   const user = useAtomValue(userAtom);
 
-  return user?.picture ? (
-    <Image
-      src={user.picture ?? ''}
-      alt="アイコン"
-      width={40}
-      height={40}
-      className={styles.icon}
+  return (
+    <button
+      type="button"
+      className={styles.trigger}
       onClick={onClick}
-    />
-  ) : (
-    <div className={styles.iconPlaceholder} onClick={onClick}>
-      {user?.name?.charAt(0) || 'U'}
-    </div>
+      aria-haspopup="menu"
+      aria-expanded={expanded}
+      aria-label="ユーザーメニュー"
+    >
+      {user?.picture ? (
+        <Image
+          src={user.picture ?? ''}
+          alt=""
+          width={40}
+          height={40}
+          className={styles.icon}
+        />
+      ) : (
+        <span className={styles.iconPlaceholder}>
+          {user?.name?.charAt(0) || 'U'}
+        </span>
+      )}
+    </button>
   );
 };
 

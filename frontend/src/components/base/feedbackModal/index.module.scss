@@ -41,14 +41,28 @@
   border-radius: 6px;
   padding: 0.55rem 0.9rem;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:focus-visible {
+    outline: 2px solid $color-blue;
+    outline-offset: 2px;
+  }
 }
 
 .primary {
-  background: #3498db;
+  background: $color-blue;
   color: #fff;
+
+  &:hover {
+    background: $color-blue-hover;
+  }
 }
 
 .secondary {
   background: #e5e7eb;
   color: #111827;
+
+  &:hover {
+    background: #d6dae0;
+  }
 }

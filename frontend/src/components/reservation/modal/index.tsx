@@ -30,6 +30,15 @@ const ReservationModal = ({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isVisible) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -43,12 +52,22 @@ const ReservationModal = ({
       className={`${styles.modalBackdrop} ${isOpen ? styles.open : ''}`}
       onClick={handleBackdropClick}
     >
-      <div className={styles.modalContent}>
+      <div
+        className={styles.modalContent}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reservation-modal-title"
+      >
         <div className={styles.modalHeader}>
-          <h2>予約登録</h2>
-          {/* <button className={styles.closeBtn} onClick={onClose}>
-            キャンセル
-          </button> */}
+          <h2 id="reservation-modal-title">予約登録</h2>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="閉じる"
+          >
+            ×
+          </button>
         </div>
         <div className={styles.modalBody}>
           <ReservationForm

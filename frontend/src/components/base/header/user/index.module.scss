@@ -1,6 +1,26 @@
-.icon {
+.trigger {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
   border-radius: 50%;
   cursor: pointer;
+  line-height: 0;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6);
+  }
+}
+
+.icon {
+  display: block;
+  border-radius: 50%;
 }
 
 .iconPlaceholder {
@@ -13,5 +33,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }

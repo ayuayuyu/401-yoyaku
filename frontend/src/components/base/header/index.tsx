@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ViewType } from '@/constants/type';
 import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/user';
@@ -18,6 +18,7 @@ interface HeaderProps {
 const Header = ({ currentView, onViewChange, onLogout }: HeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { view: 'month', text: '月間' },
@@ -26,6 +27,27 @@ const Header = ({ currentView, onViewChange, onLogout }: HeaderProps) => {
   ];
 
   const user = useAtomValue(userAtom);
+
+  // メニューを開いている間だけ、外側クリックと Escape で閉じる。
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
 
   return (
     <header className={styles.header}>
@@ -36,6 +58,7 @@ const Header = ({ currentView, onViewChange, onLogout }: HeaderProps) => {
           <button
             key={item.view}
             onClick={() => onViewChange(item.view as ViewType)}
+            aria-current={currentView === item.view ? 'page' : undefined}
             className={`${styles.navButton} ${
               currentView === item.view ? styles.active : ''
             }`}
@@ -45,8 +68,8 @@ const Header = ({ currentView, onViewChange, onLogout }: HeaderProps) => {
         ))}
       </nav>
 
-      <div className={styles.user}>
-        <UserIcon onClick={toggleMenu} />
+      <div className={styles.user} ref={userMenuRef}>
+        <UserIcon onClick={toggleMenu} expanded={menuOpen} />
         {menuOpen && (
           <div className={styles.menuContainer}>
             <div className={styles.userInfo}>
