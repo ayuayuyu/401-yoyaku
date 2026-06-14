@@ -10,7 +10,7 @@ services:
       - 55432:5432
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ./yoyaku-backendo/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U user -d app" ]
       interval: 10s
@@ -23,10 +23,10 @@ services:
   yoyaku:
     container_name: 401-yoyaku
     build:
-      context: ./yoyaku-backendo
+      context: ./backend
       dockerfile: build/go/Dockerfile
     volumes:
-      - ./yoyaku-backendo/src:/go/src/app
+      - ./backend/src:/go/src/app
     ports:
       - 8080:8080
     environment:
@@ -48,11 +48,12 @@ services:
   frontend:
     container_name: 401-yoyaku-frontend
     build:
-      context: ./yoyaku-frontend
+      context: ./frontend
       dockerfile: Dockerfile
     volumes:
-      - ./yoyaku-frontend:/app
+      - ./frontend:/app
       - /app/node_modules
+      - /app/.next
     ports:
       - 3000:3000
     environment:
