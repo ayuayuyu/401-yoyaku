@@ -21,6 +21,7 @@ interface ReservationCalendarProps {
   currentDate: Date;
   refreshKey: number;
   onDateClick: (date: Date) => void;
+  onDayDetails: (date: Date) => void;
   onNewReservation: () => void;
 }
 
@@ -58,9 +59,9 @@ const computeEventsPerDay = (
   if (!Number.isFinite(cellHeight) || cellHeight <= 0) {
     return DEFAULT_EVENTS_PER_DAY;
   }
-  // "..." (+ N events) インジケータはセル下端のパディング内に収まる前提とし
-  // 控除しない。控除するとセル高が小さい環境で 1 件しか表示できなくなり、
-  // ロード直後に予約内容がほぼ見えなくなるため。
+  // 「他 N件」インジケータはセル下端のパディング内に収まる前提とし控除しない。
+  // 控除するとセル高が小さい環境で 1 件しか表示できなくなり、ロード直後に
+  // 予約内容がほぼ見えなくなるため。
   const available = cellHeight - headerHeight - paddingY;
   const slot = MONTH_CELL_EVENT_HEIGHT + MONTH_CELL_EVENT_GAP;
   const raw = Math.floor((available + MONTH_CELL_EVENT_GAP) / slot);
@@ -80,11 +81,54 @@ const formatYmd = (zdt: Temporal.ZonedDateTime): string => {
   return `${pd.year}-${String(pd.month).padStart(2, '0')}-${String(pd.day).padStart(2, '0')}`;
 };
 
+// Schedule-X はカスタム translations を渡すと組み込み翻訳と「マージせず丸ごと置換」する
+// (core 内部: `config.translations || builtinTranslations`)。さらにロケール照合は
+// ハイフンを除去したキーで行う (`ja-JP` → `jaJP`)。このため:
+//   - キーは必ず `jaJP` にする。`'ja-JP'` で渡すと言語が見つからず translate がキー文字列を
+//     そのまま返し、ラベルが `+ {{n}} events` のまま ({{n}} も未補間) で表示される。
+//   - 置換で他の日本語表示が英語キーに落ちないよう、組み込み jaJP 辞書を再掲して上書きする。
+// 月セルの「表示しきれない件数」は Google カレンダー風に「他 N件」へ差し替える。
+const JA_JP_TRANSLATIONS = {
+  // date picker
+  Date: '日付',
+  'MM/DD/YYYY': '年/月/日',
+  'Next month': '次の月',
+  'Previous month': '前の月',
+  'Choose Date': '日付を選択',
+  // calendar
+  Today: '今日',
+  Month: '月',
+  Week: '週',
+  Day: '日',
+  List: 'リスト',
+  'Select View': 'ビューを選択',
+  View: 'ビュー',
+  'No events': '予約なし',
+  'Next period': '次の期間',
+  'Previous period': '前の期間',
+  to: 'から',
+  'Full day- and multiple day events': '終日および複数日イベント',
+  'Link to {{n}} more events on {{date}}': '{{date}} の他 {{n}} 件の予約',
+  'Link to 1 more event on {{date}}': '{{date}} の他 1 件の予約',
+  CW: '週 {{week}}',
+  // time picker
+  Time: '時間',
+  AM: '午前',
+  PM: '午後',
+  Cancel: 'キャンセル',
+  OK: 'OK',
+  'Select time': '時間を選択',
+  // 月セルの「他 N件」インジケータ (表示上限を超えた予約数)。
+  '+ {{n}} events': '他 {{n}} 件',
+  '+ 1 event': '他 1 件',
+};
+
 const ReservationCalendar = ({
   currentView,
   currentDate,
   refreshKey,
   onDateClick,
+  onDayDetails,
   onNewReservation,
 }: ReservationCalendarProps) => {
   const eventsService = useMemo(() => createEventsServicePlugin(), []);
@@ -93,14 +137,35 @@ const ReservationCalendar = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [nEventsPerDay, setNEventsPerDay] = useState(DEFAULT_EVENTS_PER_DAY);
 
-  const loadEvents = async (start: string, end: string) => {
+  // 「新規予約」ボタンから常に最新のコールバックを呼ぶための ref。
+  // customComponents を毎レンダー作り直さないよう、onNewReservation を
+  // 直接クロージャに閉じ込めず ref 越しに参照する。
+  const onNewReservationRef = useRef(onNewReservation);
+  // 同様に、カレンダー生成時の config に閉じ込めるコールバックは ref 越しに
+  // 呼ぶ (config はマウント時 1 回だけ生成され、最新の props を参照できないため)。
+  const onDateClickRef = useRef(onDateClick);
+  const onDayDetailsRef = useRef(onDayDetails);
+  useEffect(() => {
+    onNewReservationRef.current = onNewReservation;
+    onDateClickRef.current = onDateClick;
+    onDayDetailsRef.current = onDayDetails;
+  }, [onNewReservation, onDateClick, onDayDetails]);
+
+  const fetchEventsForRange = async (start: string, end: string) => {
     try {
       const reservations = await fetchReservationsByWeek(start, end);
-      eventsService.set(reservations.map(toScheduleXEvent));
+      return reservations.map(toScheduleXEvent);
     } catch (error) {
       console.error('予約データの取得に失敗しました:', error);
-      eventsService.set([]);
+      return [];
     }
+  };
+
+  // 予約作成/編集後の手動リフェッチ用。mutation は range 変更を伴わず
+  // fetchEvents が呼ばれないため、表示中の range を使って取り直し
+  // eventsService で反映する。
+  const loadEvents = async (start: string, end: string) => {
+    eventsService.set(await fetchEventsForRange(start, end));
   };
 
   const calendar = useNextCalendarApp(
@@ -116,29 +181,30 @@ const ReservationCalendar = ({
         nEventsPerDay,
       },
       translations: {
-        'ja-JP': {
-          '+ {{n}} events': '...',
-          '+ 1 event': '...',
-          Today: '今日',
-        },
+        jaJP: JA_JP_TRANSLATIONS,
       },
       events: [],
       callbacks: {
-        onRangeUpdate: (range) => {
+        // fetchEvents は onRangeUpdate と異なり「初回レンダー時にも」呼ばれる。
+        // onRangeUpdate は内部の wasInitialized 判定で初回 range セット時は発火せず、
+        // リロード直後の表示が空になっていた。range ベースの読み込みはこちらに一本化。
+        fetchEvents: async (range) => {
           const start = formatYmd(range.start);
           const end = formatYmd(range.end);
           rangeRef.current = { start, end };
-          loadEvents(start, end);
+          return fetchEventsForRange(start, end);
         },
+        // 月の日クリックはその日の詳細(日ビュー)へ。週/日の時間枠クリックは
+        // 新規予約モーダルを開く。
         onClickDate: (date) => {
-          onDateClick(plainDateToJSDate(date));
+          onDayDetailsRef.current(plainDateToJSDate(date));
         },
         onClickDateTime: (dateTime) => {
-          onDateClick(zonedToJSDate(dateTime));
+          onDateClickRef.current(zonedToJSDate(dateTime));
         },
       },
     },
-    [eventsService, calendarControls, nEventsPerDay],
+    [eventsService, calendarControls],
   );
 
   // Sync external view changes (header buttons) into Schedule-X.
@@ -153,7 +219,26 @@ const ReservationCalendar = ({
     calendarControls.setDate(toPlainDate(currentDate));
   }, [calendar, calendarControls, currentDate]);
 
-  // Refetch after a reservation mutation. onRangeUpdate already handles initial load.
+  // 算出した nEventsPerDay を月グリッドに反映する。useNextCalendarApp は
+  // アプリを 1 度しか生成せず、monthGridOptions の公開 setter も無いため、
+  // 内部 signal を直接更新して再生成・再フェッチなしに表示件数を変える。
+  // (Schedule-X 4.x: 月グリッドは config.monthGridOptions.value を購読している)
+  useEffect(() => {
+    if (!calendar) return;
+    const config = (
+      calendar as unknown as {
+        $app: {
+          config: { monthGridOptions: { value: { nEventsPerDay: number } } };
+        };
+      }
+    ).$app.config;
+    config.monthGridOptions.value = {
+      ...config.monthGridOptions.value,
+      nEventsPerDay,
+    };
+  }, [calendar, nEventsPerDay]);
+
+  // Refetch after a reservation mutation. fetchEvents already handles initial load.
   useEffect(() => {
     if (refreshKey === 0 || !rangeRef.current) return;
     loadEvents(rangeRef.current.start, rangeRef.current.end);
@@ -201,23 +286,30 @@ const ReservationCalendar = ({
     };
   }, [calendar, currentView]);
 
-  const HeaderNewReservationButton = () => (
-    <button
-      type="button"
-      className="sx__custom-new-reservation"
-      onClick={onNewReservation}
-    >
-      新規予約
-    </button>
+  // Schedule-X の React ラッパは customComponents の参照が変わるたびに
+  // calendarApp.destroy() → render() を実行する。毎レンダー新しいオブジェクト/関数を
+  // 渡すと、onRangeUpdate で eventsService.set() した予約が再描画で消える
+  // (初回ロードや予約作成直後に表示されない原因)。useMemo で一度だけ生成する。
+  const customComponents = useMemo(
+    () => ({
+      headerContentLeftAppend: () => (
+        <button
+          type="button"
+          className="sx__custom-new-reservation"
+          onClick={() => onNewReservationRef.current()}
+        >
+          新規予約
+        </button>
+      ),
+    }),
+    [],
   );
 
   return (
     <div ref={wrapperRef} style={{ height: '100%' }}>
       <ScheduleXCalendar
         calendarApp={calendar}
-        customComponents={{
-          headerContentLeftAppend: HeaderNewReservationButton,
-        }}
+        customComponents={customComponents}
       />
     </div>
   );
