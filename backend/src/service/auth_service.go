@@ -80,3 +80,13 @@ func (s *AuthService) FindOrCreateUser(ctx context.Context, info GoogleUserInfo)
 
 	return dbUser, nil
 }
+
+// SaveGoogleRefreshToken は本人カレンダー連携用の refresh token を保存する。
+// Google は初回同意時などにしか refresh token を返さないため、呼び出し側で
+// 空でない場合のみ呼ぶこと。
+func (s *AuthService) SaveGoogleRefreshToken(ctx context.Context, userID int64, refreshToken string) error {
+	return s.queries.UpdateUserGoogleRefreshToken(ctx, db.UpdateUserGoogleRefreshTokenParams{
+		ID:                 userID,
+		GoogleRefreshToken: sql.NullString{String: refreshToken, Valid: refreshToken != ""},
+	})
+}

@@ -72,9 +72,9 @@ func (q *Queries) CheckOverlappingReservationForUpdate(ctx context.Context, arg 
 
 const createReservation = `-- name: CreateReservation :execresult
 INSERT INTO reservations (
-    user_id, title, start_time, end_time, status
+    user_id, title, start_time, end_time, status, notes
 ) VALUES (
-  $1, $2, $3, $4, 'confirmed'
+  $1, $2, $3, $4, 'confirmed', $5
 )
 `
 
@@ -83,6 +83,7 @@ type CreateReservationParams struct {
 	Title     string    `json:"title"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
+	Notes     string    `json:"notes"`
 }
 
 func (q *Queries) CreateReservation(ctx context.Context, arg CreateReservationParams) (sql.Result, error) {
@@ -91,6 +92,7 @@ func (q *Queries) CreateReservation(ctx context.Context, arg CreateReservationPa
 		arg.Title,
 		arg.StartTime,
 		arg.EndTime,
+		arg.Notes,
 	)
 }
 
@@ -137,7 +139,7 @@ func (q *Queries) DeleteReservationByID(ctx context.Context, arg DeleteReservati
 }
 
 const getReservationByID = `-- name: GetReservationByID :one
-SELECT id, user_id, title, start_time, end_time, status, created_at, updated_at FROM reservations
+SELECT id, user_id, title, start_time, end_time, status, notes, google_event_id, created_at, updated_at FROM reservations
 WHERE id = $1
 `
 
@@ -151,6 +153,8 @@ func (q *Queries) GetReservationByID(ctx context.Context, id int64) (Reservation
 		&i.StartTime,
 		&i.EndTime,
 		&i.Status,
+		&i.Notes,
+		&i.GoogleEventID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -158,7 +162,7 @@ func (q *Queries) GetReservationByID(ctx context.Context, id int64) (Reservation
 }
 
 const getReservationLastInserted = `-- name: GetReservationLastInserted :one
-SELECT id, user_id, title, start_time, end_time, status, created_at, updated_at FROM reservations
+SELECT id, user_id, title, start_time, end_time, status, notes, google_event_id, created_at, updated_at FROM reservations
 ORDER BY id DESC
 LIMIT 1
 `
@@ -173,6 +177,8 @@ func (q *Queries) GetReservationLastInserted(ctx context.Context) (Reservation, 
 		&i.StartTime,
 		&i.EndTime,
 		&i.Status,
+		&i.Notes,
+		&i.GoogleEventID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -180,7 +186,7 @@ func (q *Queries) GetReservationLastInserted(ctx context.Context) (Reservation, 
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, google_id, avatar_url, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
 WHERE email = $1
   AND deleted_at IS NULL
 `
@@ -194,6 +200,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.GoogleID,
 		&i.AvatarUrl,
+		&i.GoogleRefreshToken,
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -203,7 +210,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, name, email, google_id, avatar_url, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
 WHERE google_id = $1
   AND deleted_at IS NULL
 `
@@ -217,6 +224,7 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 		&i.Email,
 		&i.GoogleID,
 		&i.AvatarUrl,
+		&i.GoogleRefreshToken,
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -226,7 +234,7 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, google_id, avatar_url, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
 WHERE id = $1
   AND deleted_at IS NULL
 `
@@ -240,6 +248,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.Email,
 		&i.GoogleID,
 		&i.AvatarUrl,
+		&i.GoogleRefreshToken,
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -249,7 +258,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 }
 
 const listReservationsByDate = `-- name: ListReservationsByDate :many
-SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.created_at, r.updated_at, u.name as user_name
+SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.notes, r.google_event_id, r.created_at, r.updated_at, u.name as user_name
 FROM reservations AS r
 JOIN users AS u ON r.user_id = u.id AND u.deleted_at IS NULL
 WHERE
@@ -266,15 +275,17 @@ type ListReservationsByDateParams struct {
 }
 
 type ListReservationsByDateRow struct {
-	ID        int64     `json:"id"`
-	UserID    int64     `json:"user_id"`
-	Title     string    `json:"title"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	UserName  string    `json:"user_name"`
+	ID            int64          `json:"id"`
+	UserID        int64          `json:"user_id"`
+	Title         string         `json:"title"`
+	StartTime     time.Time      `json:"start_time"`
+	EndTime       time.Time      `json:"end_time"`
+	Status        string         `json:"status"`
+	Notes         string         `json:"notes"`
+	GoogleEventID sql.NullString `json:"google_event_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	UserName      string         `json:"user_name"`
 }
 
 func (q *Queries) ListReservationsByDate(ctx context.Context, arg ListReservationsByDateParams) ([]ListReservationsByDateRow, error) {
@@ -293,6 +304,8 @@ func (q *Queries) ListReservationsByDate(ctx context.Context, arg ListReservatio
 			&i.StartTime,
 			&i.EndTime,
 			&i.Status,
+			&i.Notes,
+			&i.GoogleEventID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
@@ -311,7 +324,7 @@ func (q *Queries) ListReservationsByDate(ctx context.Context, arg ListReservatio
 }
 
 const listReservationsByMonth = `-- name: ListReservationsByMonth :many
-SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.created_at, r.updated_at, u.name as user_name
+SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.notes, r.google_event_id, r.created_at, r.updated_at, u.name as user_name
 FROM reservations AS r
 JOIN users AS u ON r.user_id = u.id AND u.deleted_at IS NULL
 WHERE
@@ -328,15 +341,17 @@ type ListReservationsByMonthParams struct {
 }
 
 type ListReservationsByMonthRow struct {
-	ID        int64     `json:"id"`
-	UserID    int64     `json:"user_id"`
-	Title     string    `json:"title"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	UserName  string    `json:"user_name"`
+	ID            int64          `json:"id"`
+	UserID        int64          `json:"user_id"`
+	Title         string         `json:"title"`
+	StartTime     time.Time      `json:"start_time"`
+	EndTime       time.Time      `json:"end_time"`
+	Status        string         `json:"status"`
+	Notes         string         `json:"notes"`
+	GoogleEventID sql.NullString `json:"google_event_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	UserName      string         `json:"user_name"`
 }
 
 func (q *Queries) ListReservationsByMonth(ctx context.Context, arg ListReservationsByMonthParams) ([]ListReservationsByMonthRow, error) {
@@ -355,6 +370,8 @@ func (q *Queries) ListReservationsByMonth(ctx context.Context, arg ListReservati
 			&i.StartTime,
 			&i.EndTime,
 			&i.Status,
+			&i.Notes,
+			&i.GoogleEventID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
@@ -373,7 +390,7 @@ func (q *Queries) ListReservationsByMonth(ctx context.Context, arg ListReservati
 }
 
 const listReservationsByUserID = `-- name: ListReservationsByUserID :many
-SELECT id, user_id, title, start_time, end_time, status, created_at, updated_at FROM reservations
+SELECT id, user_id, title, start_time, end_time, status, notes, google_event_id, created_at, updated_at FROM reservations
 WHERE status = 'confirmed'
   AND user_id = $1
   AND end_time >= NOW()
@@ -396,6 +413,8 @@ func (q *Queries) ListReservationsByUserID(ctx context.Context, userID int64) ([
 			&i.StartTime,
 			&i.EndTime,
 			&i.Status,
+			&i.Notes,
+			&i.GoogleEventID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -413,7 +432,7 @@ func (q *Queries) ListReservationsByUserID(ctx context.Context, userID int64) ([
 }
 
 const listReservationsByWeek = `-- name: ListReservationsByWeek :many
-SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.created_at, r.updated_at, u.name as user_name
+SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.notes, r.google_event_id, r.created_at, r.updated_at, u.name as user_name
 FROM reservations AS r
 JOIN users AS u ON r.user_id = u.id AND u.deleted_at IS NULL
 WHERE
@@ -430,15 +449,17 @@ type ListReservationsByWeekParams struct {
 }
 
 type ListReservationsByWeekRow struct {
-	ID        int64     `json:"id"`
-	UserID    int64     `json:"user_id"`
-	Title     string    `json:"title"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	UserName  string    `json:"user_name"`
+	ID            int64          `json:"id"`
+	UserID        int64          `json:"user_id"`
+	Title         string         `json:"title"`
+	StartTime     time.Time      `json:"start_time"`
+	EndTime       time.Time      `json:"end_time"`
+	Status        string         `json:"status"`
+	Notes         string         `json:"notes"`
+	GoogleEventID sql.NullString `json:"google_event_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	UserName      string         `json:"user_name"`
 }
 
 func (q *Queries) ListReservationsByWeek(ctx context.Context, arg ListReservationsByWeekParams) ([]ListReservationsByWeekRow, error) {
@@ -457,6 +478,8 @@ func (q *Queries) ListReservationsByWeek(ctx context.Context, arg ListReservatio
 			&i.StartTime,
 			&i.EndTime,
 			&i.Status,
+			&i.Notes,
+			&i.GoogleEventID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
@@ -475,7 +498,7 @@ func (q *Queries) ListReservationsByWeek(ctx context.Context, arg ListReservatio
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email, google_id, avatar_url, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
 WHERE deleted_at IS NULL
 ORDER BY id
 `
@@ -495,6 +518,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Email,
 			&i.GoogleID,
 			&i.AvatarUrl,
+			&i.GoogleRefreshToken,
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -513,6 +537,22 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const setReservationGoogleEventID = `-- name: SetReservationGoogleEventID :exec
+UPDATE reservations
+SET google_event_id = $2
+WHERE id = $1
+`
+
+type SetReservationGoogleEventIDParams struct {
+	ID            int64          `json:"id"`
+	GoogleEventID sql.NullString `json:"google_event_id"`
+}
+
+func (q *Queries) SetReservationGoogleEventID(ctx context.Context, arg SetReservationGoogleEventIDParams) error {
+	_, err := q.db.ExecContext(ctx, setReservationGoogleEventID, arg.ID, arg.GoogleEventID)
+	return err
+}
+
 const softDeleteUser = `-- name: SoftDeleteUser :exec
 UPDATE users
 SET deleted_at = CURRENT_TIMESTAMP
@@ -526,9 +566,9 @@ func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) error {
 
 const updateReservationByID = `-- name: UpdateReservationByID :execresult
 UPDATE reservations
-SET title = $1, start_time = $2, end_time = $3, updated_at = CURRENT_TIMESTAMP
-WHERE id = $4
-  AND user_id = $5
+SET title = $1, start_time = $2, end_time = $3, notes = $4, updated_at = CURRENT_TIMESTAMP
+WHERE id = $5
+  AND user_id = $6
   AND status = 'confirmed'
 `
 
@@ -536,6 +576,7 @@ type UpdateReservationByIDParams struct {
 	Title     string    `json:"title"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
+	Notes     string    `json:"notes"`
 	ID        int64     `json:"id"`
 	UserID    int64     `json:"user_id"`
 }
@@ -545,7 +586,24 @@ func (q *Queries) UpdateReservationByID(ctx context.Context, arg UpdateReservati
 		arg.Title,
 		arg.StartTime,
 		arg.EndTime,
+		arg.Notes,
 		arg.ID,
 		arg.UserID,
 	)
+}
+
+const updateUserGoogleRefreshToken = `-- name: UpdateUserGoogleRefreshToken :exec
+UPDATE users
+SET google_refresh_token = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+`
+
+type UpdateUserGoogleRefreshTokenParams struct {
+	ID                 int64          `json:"id"`
+	GoogleRefreshToken sql.NullString `json:"google_refresh_token"`
+}
+
+func (q *Queries) UpdateUserGoogleRefreshToken(ctx context.Context, arg UpdateUserGoogleRefreshTokenParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserGoogleRefreshToken, arg.ID, arg.GoogleRefreshToken)
+	return err
 }

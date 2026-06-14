@@ -31,22 +31,28 @@ func (h *ReservationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	reservation, err := h.service.Create(c.Request.Context(), userID, req)
+	reservation, gcalStatus, err := h.service.Create(c.Request.Context(), userID, req)
 	if err != nil {
 		handleReservationError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"status":     "success",
 		"id":         reservation.ID,
 		"user_id":    reservation.UserID,
 		"title":      reservation.Title,
 		"start_time": reservation.StartTime,
 		"end_time":   reservation.EndTime,
+		"notes":      reservation.Notes,
 		"created_at": reservation.CreatedAt,
 		"updated_at": reservation.UpdatedAt,
-	})
+	}
+	// Google カレンダー連携を要求した場合のみ結果を返す。
+	if req.AddToGoogleCalendar {
+		resp["google_calendar"] = gcalStatus
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *ReservationHandler) GetMe(c *gin.Context) {
@@ -133,6 +139,7 @@ func (h *ReservationHandler) Edit(c *gin.Context) {
 		"title":      updated.Title,
 		"start_time": updated.StartTime,
 		"end_time":   updated.EndTime,
+		"notes":      updated.Notes,
 		"created_at": updated.CreatedAt,
 		"updated_at": updated.UpdatedAt,
 	})

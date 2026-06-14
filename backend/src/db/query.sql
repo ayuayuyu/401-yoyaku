@@ -30,18 +30,28 @@ UPDATE users
 SET deleted_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
+-- name: UpdateUserGoogleRefreshToken :exec
+UPDATE users
+SET google_refresh_token = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1;
+
 
 -- name: CreateReservation :execresult
 INSERT INTO reservations (
-    user_id, title, start_time, end_time, status
+    user_id, title, start_time, end_time, status, notes
 ) VALUES (
-  $1, $2, $3, $4, 'confirmed'
+  $1, $2, $3, $4, 'confirmed', $5
 );
 
 -- name: GetReservationLastInserted :one
 SELECT * FROM reservations
 ORDER BY id DESC
 LIMIT 1;
+
+-- name: SetReservationGoogleEventID :exec
+UPDATE reservations
+SET google_event_id = $2
+WHERE id = $1;
 
 
 -- name: GetReservationByID :one
@@ -90,9 +100,9 @@ ORDER BY
 
 -- name: UpdateReservationByID :execresult
 UPDATE reservations
-SET title = $1, start_time = $2, end_time = $3, updated_at = CURRENT_TIMESTAMP
-WHERE id = $4
-  AND user_id = $5
+SET title = $1, start_time = $2, end_time = $3, notes = $4, updated_at = CURRENT_TIMESTAMP
+WHERE id = $5
+  AND user_id = $6
   AND status = 'confirmed';
 
 -- name: DeleteReservationByID :exec

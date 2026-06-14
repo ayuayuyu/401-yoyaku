@@ -35,9 +35,12 @@ func NewReservationService(queries *db.Queries) *ReservationService {
 	return &ReservationService{queries: queries}
 }
 
-func (s *ReservationService) Create(ctx context.Context, userID int64, req types.ReservationsRequest) (db.Reservation, error) {
+// Create は予約を登録する。第 2 戻り値は本人 Google カレンダー連携の結果
+// ("" / added / needs_relogin / failed)。req.AddToGoogleCalendar が false の
+// ときは "" を返す。カレンダー連携の失敗は予約自体を失敗させない。
+func (s *ReservationService) Create(ctx context.Context, userID int64, req types.ReservationsRequest) (db.Reservation, string, error) {
 	if err := validateReservationRequest(req); err != nil {
-		return db.Reservation{}, err
+		return db.Reservation{}, "", err
 	}
 
 	// 重複チェック
@@ -46,10 +49,10 @@ func (s *ReservationService) Create(ctx context.Context, userID int64, req types
 		EndTime:   req.StartTime,
 	})
 	if err != nil {
-		return db.Reservation{}, ErrOverlapCheckFail
+		return db.Reservation{}, "", ErrOverlapCheckFail
 	}
 	if count > 0 {
-		return db.Reservation{}, ErrOverlapping
+		return db.Reservation{}, "", ErrOverlapping
 	}
 
 	// 登録
@@ -58,22 +61,30 @@ func (s *ReservationService) Create(ctx context.Context, userID int64, req types
 		Title:     req.Title,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
+		Notes:     req.Notes,
 	})
 	if err != nil {
-		return db.Reservation{}, ErrCreateFailed
+		return db.Reservation{}, "", ErrCreateFailed
 	}
 
 	// 作成した予約を取得
 	reservation, err := s.queries.GetReservationLastInserted(ctx)
 	if err != nil {
-		return db.Reservation{}, ErrFetchFailed
+		return db.Reservation{}, "", ErrFetchFailed
 	}
 
+	// 通知・本人カレンダー連携にはユーザー情報が必要。
+	gcalStatus := ""
 	if user, userErr := s.queries.GetUserByID(ctx, userID); userErr == nil {
 		s.notifyReservationCreated(ctx, reservation, user)
+		if req.AddToGoogleCalendar {
+			gcalStatus = s.addToReserverGoogleCalendar(ctx, user, reservation)
+		}
+	} else if req.AddToGoogleCalendar {
+		gcalStatus = GCalStatusFailed
 	}
 
-	return reservation, nil
+	return reservation, gcalStatus, nil
 }
 
 func (s *ReservationService) GetMyReservations(ctx context.Context, userID int64) ([]db.Reservation, error) {
@@ -116,6 +127,7 @@ func (s *ReservationService) Edit(ctx context.Context, userID int64, id int64, r
 		Title:     req.Title,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
+		Notes:     req.Notes,
 		ID:        id,
 		UserID:    userID,
 	})

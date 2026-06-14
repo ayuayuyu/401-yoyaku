@@ -10,24 +10,27 @@ import (
 )
 
 type Reservation struct {
-	ID        int64     `json:"id"`
-	UserID    int64     `json:"user_id"`
-	Title     string    `json:"title"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID            int64          `json:"id"`
+	UserID        int64          `json:"user_id"`
+	Title         string         `json:"title"`
+	StartTime     time.Time      `json:"start_time"`
+	EndTime       time.Time      `json:"end_time"`
+	Status        string         `json:"status"`
+	Notes         string         `json:"notes"`
+	GoogleEventID sql.NullString `json:"google_event_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 type User struct {
-	ID        int64          `json:"id"`
-	Name      string         `json:"name"`
-	Email     string         `json:"email"`
-	GoogleID  string         `json:"google_id"`
-	AvatarUrl sql.NullString `json:"avatar_url"`
-	Role      string         `json:"role"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt sql.NullTime   `json:"deleted_at"`
+	ID                 int64          `json:"id"`
+	Name               string         `json:"name"`
+	Email              string         `json:"email"`
+	GoogleID           string         `json:"google_id"`
+	AvatarUrl          sql.NullString `json:"avatar_url"`
+	GoogleRefreshToken sql.NullString `json:"google_refresh_token"`
+	Role               string         `json:"role"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+	DeletedAt          sql.NullTime   `json:"deleted_at"`
 }

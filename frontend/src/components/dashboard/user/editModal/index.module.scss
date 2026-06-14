@@ -30,19 +30,35 @@
       font-size: 0.95rem;
       color: #444;
 
-      input {
+      input,
+      textarea {
+        box-sizing: border-box;
         display: block;
         margin-top: 0.5rem;
         width: 100%;
         padding: 0.5rem;
         font-size: 1rem;
-        border: 1px solid #ccc;
+        font-family: inherit;
+        border: 1px solid $color-border;
         border-radius: 4px;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+
+        &:hover {
+          border-color: $color-border-hover;
+        }
 
         &:focus {
-          border-color: #007bff;
+          border-color: $color-blue;
+          box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.15);
           outline: none;
         }
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 64px;
       }
     }
 
@@ -61,21 +77,26 @@
         font-size: 0.95rem;
         transition: background-color 0.2s ease;
 
+        &:focus-visible {
+          outline: 2px solid $color-blue;
+          outline-offset: 2px;
+        }
+
         &:first-of-type {
-          background-color: #28a745;
+          background-color: $color-light-green;
           color: #fff;
 
           &:hover {
-            background-color: #218838;
+            background-color: $color-green;
           }
         }
 
         &:last-of-type {
-          background-color: #6c757d;
+          background-color: $color-gray;
           color: #fff;
 
           &:hover {
-            background-color: #5a6268;
+            background-color: $color-gray-hover;
           }
         }
       }

@@ -33,32 +33,50 @@ func Setup() error {
 		RedirectURL:  "http://localhost:8080/callback",
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-		Endpoint:     google.Endpoint,
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+			// 予約者本人の Google カレンダーにイベントを作成するため
+			"https://www.googleapis.com/auth/calendar.events",
+		},
+		Endpoint: google.Endpoint,
 	}
 	return nil
 }
 
-func GetUserInfo(state string, code string) ([]byte, error) {
+// AuthCodeURL は refresh token を確実に取得するため、オフラインアクセス＋
+// 再同意 (consent) を付与した認可 URL を返す。consent を強制しないと 2 回目
+// 以降のログインで refresh token が返らないことがある。
+func AuthCodeURL(state string) string {
+	return GoogleOauthConfig.AuthCodeURL(
+		state,
+		oauth2.AccessTypeOffline,
+		oauth2.ApprovalForce,
+	)
+}
+
+// GetUserInfo は code を交換してユーザー情報を取得し、併せて発行された
+// トークン (refresh token を含む) を返す。呼び出し側で refresh token を保存する。
+func GetUserInfo(state string, code string) ([]byte, *oauth2.Token, error) {
 	if state != OauthStateString {
-		return nil, fmt.Errorf("invalid oauth state")
+		return nil, nil, fmt.Errorf("invalid oauth state")
 	}
 
 	token, err := GoogleOauthConfig.Exchange(context.Background(), code)
 	if err != nil {
-		return nil, fmt.Errorf("code exchange failed: %s", err.Error())
+		return nil, nil, fmt.Errorf("code exchange failed: %s", err.Error())
 	}
 
 	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting user info: %s", err.Error())
+		return nil, nil, fmt.Errorf("failed getting user info: %s", err.Error())
 	}
 	defer response.Body.Close()
 
 	contents, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading response body: %s", err.Error())
+		return nil, nil, fmt.Errorf("failed reading response body: %s", err.Error())
 	}
 
-	return contents, nil
+	return contents, token, nil
 }

@@ -17,6 +17,7 @@ interface Props {
     title: string;
     start_time: string;
     end_time: string;
+    notes?: string;
   };
   onClose: () => void;
   onUpdated: () => void;
@@ -31,6 +32,7 @@ const EditReservationModal = ({ reservation, onClose, onUpdated }: Props) => {
     title: reservation.title,
     start_time: formatDateTimeLocal(reservation.start_time),
     end_time: formatDateTimeLocal(reservation.end_time),
+    notes: reservation.notes ?? '',
   });
   const [feedback, setFeedback] = useState<{
     title: string;
@@ -38,7 +40,9 @@ const EditReservationModal = ({ reservation, onClose, onUpdated }: Props) => {
     onConfirm: () => void;
   } | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -84,6 +88,7 @@ const EditReservationModal = ({ reservation, onClose, onUpdated }: Props) => {
         title: form.title,
         start_time: toApiDateTimeFromLocalInput(form.start_time),
         end_time: toApiDateTimeFromLocalInput(form.end_time),
+        notes: form.notes,
       });
       setFeedback({
         title: '更新完了',
@@ -132,6 +137,15 @@ const EditReservationModal = ({ reservation, onClose, onUpdated }: Props) => {
             type="datetime-local"
             value={form.end_time}
             onChange={handleChange}
+          />
+        </label>
+        <label>
+          備考:
+          <textarea
+            name="notes"
+            value={form.notes}
+            onChange={handleChange}
+            rows={3}
           />
         </label>
         <div className={styles.modalActions}>

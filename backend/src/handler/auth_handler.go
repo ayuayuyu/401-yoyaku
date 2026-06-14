@@ -33,8 +33,8 @@ func (h *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 		log.Fatalf("環境変数 FRONTEND_URL が設定されていません")
 	}
 
-	// Googleからユーザー情報を取得
-	content, err := auth.GetUserInfo(state, code)
+	// Googleからユーザー情報とトークンを取得
+	content, token, err := auth.GetUserInfo(state, code)
 	if err != nil {
 		log.Println(err.Error())
 		c.Redirect(http.StatusTemporaryRedirect, frontendUrl+"/login?error=true")
@@ -62,6 +62,14 @@ func (h *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 		log.Println(err.Error())
 		c.Redirect(http.StatusTemporaryRedirect, frontendUrl+"/login?error=true")
 		return
+	}
+
+	// 本人カレンダー連携用に refresh token を保存する。
+	// Google は再同意時などにしか refresh token を返さないため、空でない時だけ更新。
+	if token != nil && token.RefreshToken != "" {
+		if err := h.service.SaveGoogleRefreshToken(context.Background(), dbUser.ID, token.RefreshToken); err != nil {
+			log.Println("refresh token の保存に失敗:", err)
+		}
 	}
 
 	// セッションに保存
@@ -121,6 +129,6 @@ func HandleLogout(c *gin.Context) {
 
 // Googleログイン開始
 func HandleGoogleLogin(c *gin.Context) {
-	url := auth.GoogleOauthConfig.AuthCodeURL(auth.OauthStateString)
+	url := auth.AuthCodeURL(auth.OauthStateString)
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }

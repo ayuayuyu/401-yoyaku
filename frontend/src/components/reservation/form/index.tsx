@@ -56,6 +56,7 @@ const ReservationForm = ({
     time: '',
     duration: '60',
     notes: '',
+    addToGoogleCalendar: false,
   });
   const [feedback, setFeedback] = useState<{
     title: string;
@@ -144,14 +145,30 @@ const ReservationForm = ({
     }
 
     try {
-      await fetchReservations({
+      const res = await fetchReservations({
         title: formData.title,
         start_time: toApiDateTime(formData.date, formData.time),
         end_time: toApiDateTime(toDateInputValue(end), toTimeInputValue(end)),
+        notes: formData.notes,
+        add_to_google_calendar: formData.addToGoogleCalendar,
       });
+
+      let message = '予約が登録されました。';
+      if (formData.addToGoogleCalendar) {
+        if (res.google_calendar === 'added') {
+          message = '予約を登録し、Googleカレンダーにも追加しました。';
+        } else if (res.google_calendar === 'needs_relogin') {
+          message =
+            '予約を登録しました。Googleカレンダー連携には再ログインが必要です（一度ログアウトして再度ログインしてください）。';
+        } else if (res.google_calendar === 'failed') {
+          message =
+            '予約を登録しました。ただしGoogleカレンダーへの追加に失敗しました。';
+        }
+      }
+
       setFeedback({
         title: '予約登録',
-        message: '予約が登録されました。',
+        message,
         onConfirm: () => {
           setFeedback(null);
           onSuccess();
@@ -260,6 +277,24 @@ const ReservationForm = ({
             onChange={handleChange}
             rows={3}
           />
+        </div>
+
+        <div className={styles.checkboxRow}>
+          <input
+            type="checkbox"
+            id="addToGoogleCalendar"
+            name="addToGoogleCalendar"
+            checked={formData.addToGoogleCalendar}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                addToGoogleCalendar: e.target.checked,
+              }))
+            }
+          />
+          <label htmlFor="addToGoogleCalendar">
+            Googleカレンダーにも追加する
+          </label>
         </div>
 
         <div className={styles.formActions}>
