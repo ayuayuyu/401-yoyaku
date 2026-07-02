@@ -393,8 +393,7 @@ const listReservationsByUserID = `-- name: ListReservationsByUserID :many
 SELECT id, user_id, title, start_time, end_time, status, notes, google_event_id, created_at, updated_at FROM reservations
 WHERE status = 'confirmed'
   AND user_id = $1
-  AND end_time >= NOW()
-ORDER BY start_time ASC
+ORDER BY start_time DESC
 `
 
 func (q *Queries) ListReservationsByUserID(ctx context.Context, userID int64) ([]Reservation, error) {
@@ -605,5 +604,22 @@ type UpdateUserGoogleRefreshTokenParams struct {
 
 func (q *Queries) UpdateUserGoogleRefreshToken(ctx context.Context, arg UpdateUserGoogleRefreshTokenParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserGoogleRefreshToken, arg.ID, arg.GoogleRefreshToken)
+	return err
+}
+
+const updateUserName = `-- name: UpdateUserName :exec
+UPDATE users
+SET name = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+type UpdateUserNameParams struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+func (q *Queries) UpdateUserName(ctx context.Context, arg UpdateUserNameParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserName, arg.ID, arg.Name)
 	return err
 }

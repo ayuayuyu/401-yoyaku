@@ -12,11 +12,89 @@
     border-radius: 12px;
     background: transparent;
     box-shadow: none;
+    display: flex;
+    flex-direction: column;
+
+    .navBar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 20px 8px;
+      padding: 6px 0;
+    }
+
+    .todayButton {
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: $color-blue;
+      background-color: $color-white;
+      border: 1px solid rgba(66, 133, 244, 0.4);
+      border-radius: 8px;
+      cursor: pointer;
+      transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
+
+      &:hover {
+        background-color: rgba(66, 133, 244, 0.08);
+        border-color: $color-blue;
+      }
+
+      &:focus-visible {
+        outline: 2px solid #1a73e8;
+        outline-offset: 2px;
+      }
+    }
+
+    .navControls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .navArrow {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      color: #5f6368;
+      background-color: $color-white;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      cursor: pointer;
+      transition:
+        background-color 0.15s ease,
+        color 0.15s ease;
+
+      &:hover {
+        background-color: rgba(66, 133, 244, 0.08);
+        color: $color-blue;
+        border-color: rgba(66, 133, 244, 0.4);
+      }
+
+      &:focus-visible {
+        outline: 2px solid #1a73e8;
+        outline-offset: 2px;
+      }
+    }
+
+    .periodLabel {
+      min-width: 200px;
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #202124;
+      letter-spacing: 0.02em;
+    }
 
     .view {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      flex: 1;
+      min-height: 0;
       margin: 0 20px 8px;
       border: none;
       border-radius: 0;
@@ -32,8 +110,11 @@
         min-height: 0;
       }
 
+      // 自作ナビゲーションを使うので Schedule-X 内蔵の前後ナビ・日付入力・
+      // ビュー切替は隠す。重複表示と状態のズレを防ぐ。
       :global(.sx__view-selection),
-      :global(.sx__date-input-wrapper) {
+      :global(.sx__date-input-wrapper),
+      :global(.sx__forward-backward-navigation) {
         display: none;
       }
 
@@ -88,6 +169,60 @@
         overflow-y: auto;
       }
 
+      // --- 週/日ビューを見やすくする ---
+      // 曜日と日付のヘッダーを大きく
+      :global(.sx__week-grid__day-name) {
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+
+      :global(.sx__week-grid__date-number) {
+        font-size: 1.15rem;
+        font-weight: 600;
+      }
+
+      :global(.sx__week-grid__date--is-today) :global(.sx__week-grid__date-number) {
+        color: $color-blue;
+      }
+
+      // 左の時刻軸の文字を読みやすく
+      :global(.sx__week-grid__hour-text),
+      :global(.sx__week-grid__time-axis) {
+        font-size: 0.85rem;
+        color: #5f6368;
+      }
+
+      // 1 時間ぶんの高さを確保し、予約タイトルを表示しやすくする
+      :global(.sx__week-grid__hour) {
+        min-height: 56px;
+      }
+
+      // 予約ブロックを読みやすくする
+      :global(.sx__time-grid-event),
+      :global(.sx__time-grid-event-inner) {
+        font-size: 0.88rem;
+        line-height: 1.35;
+        border-radius: 6px;
+      }
+
+      :global(.sx__time-grid-event-inner) {
+        padding: 4px 8px;
+      }
+
+      :global(.sx__time-grid-event-title) {
+        font-weight: 600;
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      :global(.sx__time-grid-event-time) {
+        font-size: 0.78rem;
+        opacity: 0.85;
+        margin-bottom: 2px;
+      }
+
+      // --- 月ビュー (既存) ---
       :global(.sx__month-grid-day) {
         min-height: 0;
         overflow: hidden;
@@ -139,14 +274,109 @@
 @media (max-width: 768px) {
   .container {
     .calendarContainer {
-      margin: 4px 12px;
+      margin: 4px 8px;
+
+      .navBar {
+        margin: 0 6px 4px;
+        gap: 6px;
+      }
+
+      .todayButton {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+      }
+
+      .navArrow {
+        width: 28px;
+        height: 28px;
+      }
+
+      .periodLabel {
+        min-width: 0;
+        flex: 1;
+        font-size: 0.95rem;
+      }
 
       .view {
-        margin: 0 10px 4px;
+        margin: 0 6px 4px;
+
+        // Schedule-X のヘッダーは狭幅で詰まりやすい。横スクロールではなく折返しで逃がす。
+        :global(.sx__calendar-header) {
+          flex-wrap: wrap;
+          gap: 6px 8px;
+        }
 
         :global(.sx__custom-new-reservation) {
           padding: 6px 10px;
           font-size: 0.85rem;
+        }
+
+        // セル内イベントを2行で表示可能にし、タイトルを最大限見せる
+        :global(.sx__month-grid-event) {
+          font-size: 0.75rem;
+          padding: 0 4px;
+          gap: 2px;
+        }
+
+        :global(.sx__month-grid-day__header-date) {
+          min-height: 28px;
+          min-width: 28px;
+          font-size: 0.85rem;
+        }
+
+        // 週ビューは狭幅では曜日表記を小さくしすぎず、文字サイズを保つ
+        :global(.sx__week-grid__day-name) {
+          font-size: 0.78rem;
+        }
+
+        :global(.sx__week-grid__date-number) {
+          font-size: 1rem;
+        }
+
+        :global(.sx__week-grid__hour) {
+          min-height: 48px;
+        }
+
+        :global(.sx__time-grid-event),
+        :global(.sx__time-grid-event-inner) {
+          font-size: 0.78rem;
+        }
+
+        // 週ビューのみ: スマホでは時刻を省き、予約者名 (= title) だけを表示する
+        :global(.sx__week-view .sx__time-grid-event-time) {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    .calendarContainer {
+      margin: 2px 4px;
+
+      .navBar {
+        margin: 0 2px 2px;
+      }
+
+      .view {
+        margin: 0 2px 2px;
+
+        :global(.sx__custom-new-reservation) {
+          padding: 5px 8px;
+          font-size: 0.8rem;
+        }
+
+        // 月表示の日付セルは番号のみが見えれば十分。曜日のヘッダーは小さく。
+        :global(.sx__month-grid-day__header-date) {
+          min-height: 24px;
+          min-width: 24px;
+          font-size: 0.75rem;
+        }
+
+        :global(.sx__month-grid-event-time) {
+          display: none; // 月表示は時刻を省きタイトルで領域を確保
         }
       }
     }

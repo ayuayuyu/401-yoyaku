@@ -76,3 +76,28 @@
     padding: 1.5rem;
   }
 }
+
+@media (max-width: 600px) {
+  .modalBackdrop {
+    align-items: flex-end; // 下からスライドアップ風の配置
+
+    .modalContent {
+      width: 100%;
+      max-width: 100%;
+      max-height: 92dvh;
+      border-radius: 12px 12px 0 0;
+    }
+
+    .modalHeader {
+      padding: 1rem 1.25rem;
+
+      h2 {
+        font-size: 1.1rem;
+      }
+    }
+
+    .modalBody {
+      padding: 1rem 1.25rem 1.25rem;
+    }
+  }
+}

@@ -35,6 +35,12 @@ UPDATE users
 SET google_refresh_token = $2, updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
+-- name: UpdateUserName :exec
+UPDATE users
+SET name = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND deleted_at IS NULL;
+
 
 -- name: CreateReservation :execresult
 INSERT INTO reservations (
@@ -62,8 +68,7 @@ WHERE id = $1;
 SELECT * FROM reservations
 WHERE status = 'confirmed'
   AND user_id = $1
-  AND end_time >= NOW()
-ORDER BY start_time ASC;
+ORDER BY start_time DESC;
 
 -- name: ListReservationsByMonth :many
 SELECT r.*, u.name as user_name

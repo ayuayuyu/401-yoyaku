@@ -3,10 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"yoyaku/auth"
 	"yoyaku/service"
@@ -90,6 +92,62 @@ func (h *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 
 	// フロントエンドへリダイレクト
 	c.Redirect(http.StatusPermanentRedirect, frontendUrl)
+}
+
+// マイページからの表示名更新リクエスト
+type updateMeRequest struct {
+	Name string `json:"name"`
+}
+
+// HandleUpdateMe はマイページから送られた表示名 (users.name) を更新し、
+// セッションの user_name も同期する。フロントの userAtom はレスポンスから
+// 再構築する。
+func (h *AuthHandler) HandleUpdateMe(c *gin.Context) {
+	store := c.MustGet("session_store").(*sessions.CookieStore)
+	session, _ := store.Get(c.Request, "session-name")
+
+	userIDStr, ok := session.Values["user_id"].(string)
+	if !ok || userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req updateMeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "リクエストの形式が正しくありません"})
+		return
+	}
+
+	user, err := h.service.UpdateUserName(c.Request.Context(), userID, req.Name)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidUserName), errors.Is(err, service.ErrUserNameTooLong):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			log.Println("ユーザー名更新失敗:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "表示名の更新に失敗しました"})
+		}
+		return
+	}
+
+	session.Values["user_name"] = user.Name
+	if err := session.Save(c.Request, c.Writer); err != nil {
+		log.Println("セッション保存失敗:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "セッション保存に失敗しました"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":      userIDStr,
+		"email":   user.Email,
+		"name":    user.Name,
+		"picture": user.AvatarUrl.String,
+	})
 }
 
 // 現在のユーザー情報を返す

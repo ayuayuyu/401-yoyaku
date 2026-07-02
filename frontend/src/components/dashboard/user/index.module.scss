@@ -16,16 +16,137 @@
   border-radius: 8px;
   margin-bottom: 32px;
 
-  svg {
+  > svg {
     font-size: 24px;
+    flex: 0 0 auto;
+  }
+
+  .userMain {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .nameRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
 
   .name {
+    flex: 0 1 auto;
+    min-width: 0;
     font-size: 1.1rem;
     font-weight: 500;
+    word-break: break-word;
   }
+
   .email {
     font-size: 0.9rem;
+    opacity: 0.95;
+    word-break: break-all;
+  }
+
+  .nameEditButton {
+    flex: 0 0 auto;
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: $color-white;
+    background-color: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.28);
+      border-color: rgba(255, 255, 255, 0.8);
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-white;
+      outline-offset: 2px;
+    }
+  }
+
+  .nameEditRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .nameInput {
+    flex: 1 1 180px;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: $color-black;
+    background-color: $color-white;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+    }
+  }
+
+  .nameEditActions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .nameSaveButton,
+  .nameCancelButton {
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background-color 0.15s ease;
+
+    &:focus-visible {
+      outline: 2px solid $color-white;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .nameSaveButton {
+    color: $color-blue;
+    background-color: $color-white;
+
+    &:hover:not(:disabled) {
+      background-color: #f1f3f4;
+    }
+  }
+
+  .nameCancelButton {
+    color: $color-white;
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.5);
+
+    &:hover:not(:disabled) {
+      background-color: rgba(255, 255, 255, 0.15);
+    }
   }
 }
 
@@ -82,5 +203,56 @@
     margin: 0;
     color: $color-gray;
     font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: 16px 12px;
+    border-radius: 0;
+  }
+
+  // 320px 固定だと iPhone 系では 1 列しか入らず中途半端に余白が出る。
+  // モバイルでは確実に 1 カラムにする。
+  .reservationsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .userInfo {
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+
+    .name {
+      font-size: 1rem;
+    }
+    .email {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+
+    .nameEditButton {
+      padding: 2px 8px;
+      font-size: 0.75rem;
+    }
+
+    .nameSaveButton,
+    .nameCancelButton {
+      padding: 5px 10px;
+      font-size: 0.8rem;
+    }
+  }
+
+  .reservationsTitle {
+    font-size: 1.2rem;
+  }
+
+  .section {
+    margin-bottom: 24px;
+  }
+
+  .emptyState {
+    padding: 40px 16px;
   }
 }

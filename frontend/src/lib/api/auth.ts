@@ -12,6 +12,11 @@ export const fetchCurrentUser = async (): Promise<User> => {
   return response.data;
 };
 
+export const updateCurrentUserName = async (name: string): Promise<User> => {
+  const response = await apiClient.put<User>('/api/me', { name });
+  return response.data;
+};
+
 export const logoutUser = async (): Promise<void> => {
   await apiClient.post('/api/logout');
 };

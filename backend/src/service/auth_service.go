@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 	"yoyaku/db"
 )
 
@@ -89,4 +92,35 @@ func (s *AuthService) SaveGoogleRefreshToken(ctx context.Context, userID int64, 
 		ID:                 userID,
 		GoogleRefreshToken: sql.NullString{String: refreshToken, Valid: refreshToken != ""},
 	})
+}
+
+var (
+	ErrInvalidUserName = errors.New("表示名を入力してください")
+	ErrUserNameTooLong = errors.New("表示名は50文字以内で入力してください")
+)
+
+const userNameMaxLength = 50
+
+// UpdateUserName はマイページからの表示名変更を保存する。
+func (s *AuthService) UpdateUserName(ctx context.Context, userID int64, name string) (db.User, error) {
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" {
+		return db.User{}, ErrInvalidUserName
+	}
+	if utf8.RuneCountInString(trimmed) > userNameMaxLength {
+		return db.User{}, ErrUserNameTooLong
+	}
+
+	if err := s.queries.UpdateUserName(ctx, db.UpdateUserNameParams{
+		ID:   userID,
+		Name: trimmed,
+	}); err != nil {
+		return db.User{}, fmt.Errorf("表示名の更新に失敗しました: %w", err)
+	}
+
+	user, err := s.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return db.User{}, fmt.Errorf("更新後のユーザー取得失敗: %w", err)
+	}
+	return user, nil
 }

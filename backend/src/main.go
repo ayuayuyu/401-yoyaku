@@ -72,6 +72,7 @@ func main() {
 	{
 		// ユーザー認証関連
 		api.GET("/me", handler.HandleGetMe)
+		api.PUT("/me", authHandler.HandleUpdateMe)
 		api.POST("/logout", handler.HandleLogout)
 
 		// 予約関連のAPIをグループ化

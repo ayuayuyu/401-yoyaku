@@ -1,7 +1,10 @@
-import { useAtomValue } from 'jotai';
+import { useAtom } from 'jotai';
 import { userAtom } from '@/store/user';
 import { MdiAccount, MdiCalendar } from '@/constants/svgIcon';
 import { fetchReservationsMe } from '@/lib/api/reservationsMe';
+import { updateCurrentUserName } from '@/lib/api/auth';
+import { parseApiError } from '@/lib/api/error';
+import FeedbackModal from '@/components/base/feedbackModal';
 import ReservationCard, { type ReservationStatus } from './card';
 import { useState, useEffect } from 'react';
 
@@ -40,7 +43,7 @@ type ReservationWithStatus = {
 };
 
 const UserInfo = ({ refreshKey }: UserInfoProps) => {
-  const user = useAtomValue(userAtom);
+  const [user, setUser] = useAtom(userAtom);
 
   const [activeReservations, setActiveReservations] = useState<
     ReservationWithStatus[]
@@ -48,6 +51,14 @@ const UserInfo = ({ refreshKey }: UserInfoProps) => {
   const [endedReservations, setEndedReservations] = useState<
     ReservationWithStatus[]
   >([]);
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const loadReservations = async () => {
     try {
@@ -85,6 +96,46 @@ const UserInfo = ({ refreshKey }: UserInfoProps) => {
     loadReservations();
   }, [refreshKey]);
 
+  const handleStartEditName = () => {
+    setNameDraft(user?.name ?? '');
+    setIsEditingName(true);
+  };
+
+  const handleCancelEditName = () => {
+    setIsEditingName(false);
+    setNameDraft('');
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      setFeedback({
+        title: '入力エラー',
+        message: '表示名を入力してください。',
+      });
+      return;
+    }
+    if (trimmed === user?.name) {
+      handleCancelEditName();
+      return;
+    }
+    setIsSavingName(true);
+    try {
+      const updated = await updateCurrentUserName(trimmed);
+      setUser(updated);
+      setIsEditingName(false);
+      setNameDraft('');
+    } catch (err) {
+      const parsed = parseApiError(err);
+      setFeedback({
+        title: '更新エラー',
+        message: parsed.message,
+      });
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
   const hasAnyReservation =
     activeReservations.length > 0 || endedReservations.length > 0;
 
@@ -92,8 +143,51 @@ const UserInfo = ({ refreshKey }: UserInfoProps) => {
     <div className={styles.pageContainer}>
       <div className={styles.userInfo}>
         <MdiAccount />
-        <div className={styles.name}>{user?.name}</div>
-        <div className={styles.email}>{user?.email}</div>
+        <div className={styles.userMain}>
+          {isEditingName ? (
+            <div className={styles.nameEditRow}>
+              <input
+                className={styles.nameInput}
+                type="text"
+                value={nameDraft}
+                maxLength={50}
+                onChange={(e) => setNameDraft(e.target.value)}
+                disabled={isSavingName}
+                aria-label="表示名"
+              />
+              <div className={styles.nameEditActions}>
+                <button
+                  type="button"
+                  className={styles.nameSaveButton}
+                  onClick={handleSaveName}
+                  disabled={isSavingName}
+                >
+                  {isSavingName ? '保存中…' : '保存'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.nameCancelButton}
+                  onClick={handleCancelEditName}
+                  disabled={isSavingName}
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.nameRow}>
+              <div className={styles.name}>{user?.name}</div>
+              <button
+                type="button"
+                className={styles.nameEditButton}
+                onClick={handleStartEditName}
+              >
+                編集
+              </button>
+            </div>
+          )}
+          <div className={styles.email}>{user?.email}</div>
+        </div>
       </div>
       {hasAnyReservation ? (
         <>
@@ -139,6 +233,12 @@ const UserInfo = ({ refreshKey }: UserInfoProps) => {
           <p>ご予約はありません。</p>
         </div>
       )}
+      <FeedbackModal
+        isOpen={feedback !== null}
+        title={feedback?.title ?? ''}
+        message={feedback?.message ?? ''}
+        onConfirm={() => setFeedback(null)}
+      />
     </div>
   );
 };
