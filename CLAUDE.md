@@ -208,3 +208,30 @@ NEXT_PUBLIC_API_URL           http://localhost:8080
   依存を変更したら `package-lock.json` と `pnpm-lock.yaml` の**両方**を更新してコミットする。
 - push を実効的に制限するには GitHub 側で **master のブランチ保護**（PR 必須＋必須ステータスチェック）を設定する（手順は docs 参照）。
 - コミット型の規約: `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`（破壊的変更は `!` 付き）。
+
+---
+
+## Loop Engineering（自走ループ）
+
+「目的と停止条件だけを与え、実装判断はループ自身に任せる」開発スタイルを本リポジトリで実践するための基盤。
+詳細は [docs/loop-engineering.md](docs/loop-engineering.md)。ループ定義は `loops/<名>/`、スキルは `.claude/skills/loop-*`。
+
+### スキル
+
+| スキル | 役割 |
+|---|---|
+| `/loop-init <名>` | 新規ループの雛形生成（目的・停止条件・検証・ガードレールを定義） |
+| `/loop-audit <LOOP.md>` | Loop Readiness Score で起動可否を判定（**起動前に必ず**） |
+| `/loop-verify <名>` | `loop-verifier` サブエージェント(**sonnet**＝本体と別モデル)で DoD 達成を採点 |
+| `/loop-sync <名>` | STATE.md の主張と実態(git/test)の乖離＝理解負債を検知 |
+| `/loop-status` | 全ループの進捗・検証判定を一覧 |
+
+### 運用規約（必読）
+
+- ループは `loops/<名>/` に **LOOP.md（憲法）** と **STATE.md（作業記憶）** を置く。実行は組込み `/loop`・`/schedule`。
+- **起動前に必ず `/loop-audit`**。Red 判定のまま回さない。
+- **検証は必ず別モデル**（`/loop-verify`）。本体が自分の成果を自己採点しない。
+- STATE.md は **毎反復更新**し、`/loop-sync` でドリフトを確認する。主張は根拠（コマンド出力）とセットで書く。
+- 停止条件（Definition of Done）は**機械的に検証可能**な形にする。曖昧なループは作らない。
+- ループの学び・再発防止パターンは [tasks/lessons.md](tasks/lessons.md) に記録する。
+- すぐ試せる実例: `loops/pr-guardian/`（PR を CI 緑・指摘対応済みに保つ。`gh` CLI 連携）。
