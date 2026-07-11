@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# staged の Go ファイルを gofmt で「規定フォーマットへ自動修正」し、整形結果を再ステージする。
+# ここでは失敗させず整形のみ行う（厳格な検査は pre-push 側）。
+set -euo pipefail
+
+# ステージされた *.go（削除を除く）
+mapfile -t go_files < <(git diff --cached --name-only --diff-filter=ACM -- '*.go')
+
+if [ "${#go_files[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+if ! command -v gofmt >/dev/null 2>&1; then
+  echo "⚠ gofmt が見つかりません（Go 未インストール）。Go の整形をスキップします。" >&2
+  exit 0
+fi
+
+changed=0
+for f in "${go_files[@]}"; do
+  [ -f "$f" ] || continue
+  before="$(cat "$f")"
+  gofmt -w "$f"
+  after="$(cat "$f")"
+  if [ "$before" != "$after" ]; then
+    git add "$f"
+    echo "  gofmt: $f を整形しました"
+    changed=1
+  fi
+done
+
+if [ "$changed" -eq 1 ]; then
+  echo "✔ Go ファイルを gofmt で整形し、再ステージしました。"
+fi

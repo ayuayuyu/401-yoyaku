@@ -1,0 +1,138 @@
+name: CI
+
+# push（全ブランチ）と master 宛て PR で実行。lint/format/型/テスト/ビルドを
+# バイパス不可の最終ゲートとして回す。ローカルの .githooks が一次ゲート。
+on:
+  push:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+# 同一ブランチの古い実行はキャンセルして無駄を省く。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (lint / typecheck / build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      # Docker(Dockerfile)が npm ci を使い package-lock.json が同期されているため CI も npm に統一。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install (npm ci)
+        run: npm ci
+
+      - name: Lint (next lint)
+        run: npm run lint
+
+      - name: Typecheck (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  backend:
+    name: Backend (gofmt / vet / build / test / sqlc)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/src
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: backend/src/go.sum
+
+      - name: gofmt check
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt 未整形のファイルがあります。'gofmt -w .' を実行してください:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: sqlc up-to-date check
+        run: |
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
+          sqlc generate
+          if ! git diff --exit-code -- db; then
+            echo "::error::sqlc generate の結果がコミットと異なります。'sqlc generate' を実行して db/ をコミットしてください。"
+            exit 1
+          fi
+
+  docker-build:
+    name: Docker build (frontend / backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/build/go/Dockerfile
+          push: false
+
+  commit-check:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
+          fail=0
+          while read -r sha; do
+            [ -z "$sha" ] && continue
+            subject="$(git log -1 --format=%s "$sha")"
+            case "$subject" in
+              Merge*|Revert*|fixup!*|squash!*) continue ;;
+            esac
+            if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+              echo "::error::Conventional Commits 違反: $subject"
+              fail=1
+            fi
+          done < <(git rev-list "$base".."$head")
+          if [ "$fail" -ne 0 ]; then
+            echo "例: 'feat(reservation): 予約重複チェックを追加' / 'fix: ...' / 'docs: ...'"
+            exit 1
+          fi

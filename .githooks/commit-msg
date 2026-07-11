@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# コミットメッセージを Conventional Commits 形式に強制する。
+# 不一致ならコミットを拒否する。緊急時は `git commit --no-verify` で回避可能（CI が最終ゲート）。
+set -euo pipefail
+
+msg_file="$1"
+subject="$(head -n 1 "$msg_file")"
+
+# merge / revert / fixup / squash の自動生成メッセージは許可する。
+case "$subject" in
+  Merge*|Revert*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
+
+if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+  cat >&2 <<'EOF'
+✖ コミットメッセージが Conventional Commits 形式ではありません。
+
+  形式: <type>(<scope 任意>): <説明>
+  type: feat | fix | docs | style | refactor | perf | test | build | ci | chore | revert
+  例:
+    feat(reservation): 予約重複チェックを追加
+    fix(calendar): 初回表示で予約が出ない不具合を修正
+    docs: READMEを更新
+    chore(ci): ワークフローを追加
+
+  破壊的変更は `feat!:` または `feat(scope)!:` のように `!` を付けます。
+  どうしても回避が必要な場合のみ `git commit --no-verify`（CI では別途検証されます）。
+EOF
+  exit 1
+fi

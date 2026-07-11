@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# push 前の厳格ゲート。lint / フォーマット / 型 / vet / テストのいずれかが失敗したら
+# push を中止する（＝「lint エラーなら push できない」）。
+# 厳格さを優先し backend・frontend の両方を毎回検査する（toolchain が無い領域は明示スキップ）。
+# 緊急回避は `git push --no-verify`（CI が最終ゲート）。
+set -uo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+status=0
+
+# run <説明> <ディレクトリ> <コマンド...>
+run() {
+  local label="$1"; local dir="$2"; shift 2
+  echo "▶ $label"
+  if ! ( cd "$dir" && "$@" ); then
+    echo "✖ 失敗: $label"
+    status=1
+  fi
+}
+
+# ---- backend (Go) ----
+if command -v go >/dev/null 2>&1; then
+  echo "▶ gofmt チェック (backend/src)"
+  unformatted="$(cd backend/src && gofmt -l .)"
+  if [ -n "$unformatted" ]; then
+    echo "✖ gofmt 未整形:"
+    printf '%s\n' "$unformatted"
+    echo "  → 'cd backend/src && gofmt -w .' で修正してください。"
+    status=1
+  fi
+  run "go vet (backend/src)"   backend/src go vet ./...
+  run "go build (backend/src)" backend/src go build ./...
+  run "go test (backend/src)"  backend/src go test ./...
+else
+  echo "⚠ go 未検出のため backend の検査をスキップ"
+fi
+
+# ---- frontend (Next.js) ----
+if [ -d frontend/node_modules ]; then
+  run "lint (frontend)"      frontend npm run --silent lint
+  run "typecheck (frontend)" frontend npm run --silent typecheck
+else
+  echo "⚠ frontend/node_modules 未検出のため lint/typecheck をスキップ（'cd frontend && npm ci' 推奨）"
+fi
+
+if [ "$status" -ne 0 ]; then
+  cat >&2 <<'EOF'
+
+✖ push を中止しました。上記の lint / フォーマット / 型 / テストのエラーを修正してください。
+  同じ検査は GitHub Actions(CI) でも実行されます。
+  どうしても回避が必要な場合のみ `git push --no-verify`。
+EOF
+  exit 1
+fi
+
+echo "✔ pre-push チェック通過"
