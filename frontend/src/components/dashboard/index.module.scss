@@ -23,6 +23,39 @@
       padding: 6px 0;
     }
 
+    // 新規予約ボタンはナビゲーション行の右端に寄せる。
+    .newReservationButton {
+      margin-left: auto;
+      padding: 8px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: $color-white;
+      background-color: $color-blue;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(66, 133, 244, 0.2);
+      transition:
+        background-color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.05s ease;
+
+      &:hover {
+        background-color: #3367d6;
+        box-shadow: 0 2px 6px rgba(66, 133, 244, 0.35);
+      }
+
+      &:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 2px rgba(66, 133, 244, 0.25);
+      }
+
+      &:focus-visible {
+        outline: 2px solid #1a73e8;
+        outline-offset: 2px;
+      }
+    }
+
     .todayButton {
       padding: 6px 14px;
       font-size: 0.9rem;
@@ -110,43 +143,10 @@
         min-height: 0;
       }
 
-      // 自作ナビゲーションを使うので Schedule-X 内蔵の前後ナビ・日付入力・
-      // ビュー切替は隠す。重複表示と状態のズレを防ぐ。
-      :global(.sx__view-selection),
-      :global(.sx__date-input-wrapper),
-      :global(.sx__forward-backward-navigation) {
+      // 日付移動・ビュー切替・新規予約は自作ナビゲーション(.navBar)に集約する。
+      // Schedule-X 内蔵ヘッダーは丸ごと隠し、行の重複と状態のズレを防ぐ。
+      :global(.sx__calendar-header) {
         display: none;
-      }
-
-      :global(.sx__custom-new-reservation) {
-        padding: 8px 16px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: $color-white;
-        background-color: $color-blue;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        box-shadow: 0 1px 2px rgba(66, 133, 244, 0.2);
-        transition:
-          background-color 0.15s ease,
-          box-shadow 0.15s ease,
-          transform 0.05s ease;
-
-        &:hover {
-          background-color: #3367d6;
-          box-shadow: 0 2px 6px rgba(66, 133, 244, 0.35);
-        }
-
-        &:active {
-          transform: translateY(1px);
-          box-shadow: 0 1px 2px rgba(66, 133, 244, 0.25);
-        }
-
-        &:focus-visible {
-          outline: 2px solid #1a73e8;
-          outline-offset: 2px;
-        }
       }
 
       :global(.sx__month-grid) {
@@ -286,6 +286,11 @@
         font-size: 0.8rem;
       }
 
+      .newReservationButton {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+      }
+
       .navArrow {
         width: 28px;
         height: 28px;
@@ -299,17 +304,6 @@
 
       .view {
         margin: 0 6px 4px;
-
-        // Schedule-X のヘッダーは狭幅で詰まりやすい。横スクロールではなく折返しで逃がす。
-        :global(.sx__calendar-header) {
-          flex-wrap: wrap;
-          gap: 6px 8px;
-        }
-
-        :global(.sx__custom-new-reservation) {
-          padding: 6px 10px;
-          font-size: 0.85rem;
-        }
 
         // セル内イベントを2行で表示可能にし、タイトルを最大限見せる
         :global(.sx__month-grid-event) {
@@ -360,13 +354,13 @@
         margin: 0 2px 2px;
       }
 
+      .newReservationButton {
+        padding: 5px 8px;
+        font-size: 0.8rem;
+      }
+
       .view {
         margin: 0 2px 2px;
-
-        :global(.sx__custom-new-reservation) {
-          padding: 5px 8px;
-          font-size: 0.8rem;
-        }
 
         // 月表示の日付セルは番号のみが見えれば十分。曜日のヘッダーは小さく。
         :global(.sx__month-grid-day__header-date) {

@@ -22,7 +22,6 @@ interface ReservationCalendarProps {
   refreshKey: number;
   onDateClick: (date: Date) => void;
   onDayDetails: (date: Date) => void;
-  onNewReservation: () => void;
 }
 
 const VIEW_NAME: Record<ViewKind, string> = {
@@ -129,7 +128,6 @@ const ReservationCalendar = ({
   refreshKey,
   onDateClick,
   onDayDetails,
-  onNewReservation,
 }: ReservationCalendarProps) => {
   const eventsService = useMemo(() => createEventsServicePlugin(), []);
   const calendarControls = useMemo(() => createCalendarControlsPlugin(), []);
@@ -137,19 +135,14 @@ const ReservationCalendar = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [nEventsPerDay, setNEventsPerDay] = useState(DEFAULT_EVENTS_PER_DAY);
 
-  // 「新規予約」ボタンから常に最新のコールバックを呼ぶための ref。
-  // customComponents を毎レンダー作り直さないよう、onNewReservation を
-  // 直接クロージャに閉じ込めず ref 越しに参照する。
-  const onNewReservationRef = useRef(onNewReservation);
-  // 同様に、カレンダー生成時の config に閉じ込めるコールバックは ref 越しに
-  // 呼ぶ (config はマウント時 1 回だけ生成され、最新の props を参照できないため)。
+  // カレンダー生成時の config に閉じ込めるコールバックは ref 越しに呼ぶ
+  // (config はマウント時 1 回だけ生成され、最新の props を参照できないため)。
   const onDateClickRef = useRef(onDateClick);
   const onDayDetailsRef = useRef(onDayDetails);
   useEffect(() => {
-    onNewReservationRef.current = onNewReservation;
     onDateClickRef.current = onDateClick;
     onDayDetailsRef.current = onDayDetails;
-  }, [onNewReservation, onDateClick, onDayDetails]);
+  }, [onDateClick, onDayDetails]);
 
   const fetchEventsForRange = async (start: string, end: string) => {
     try {
@@ -286,31 +279,9 @@ const ReservationCalendar = ({
     };
   }, [calendar, currentView]);
 
-  // Schedule-X の React ラッパは customComponents の参照が変わるたびに
-  // calendarApp.destroy() → render() を実行する。毎レンダー新しいオブジェクト/関数を
-  // 渡すと、onRangeUpdate で eventsService.set() した予約が再描画で消える
-  // (初回ロードや予約作成直後に表示されない原因)。useMemo で一度だけ生成する。
-  const customComponents = useMemo(
-    () => ({
-      headerContentLeftAppend: () => (
-        <button
-          type="button"
-          className="sx__custom-new-reservation"
-          onClick={() => onNewReservationRef.current()}
-        >
-          新規予約
-        </button>
-      ),
-    }),
-    [],
-  );
-
   return (
     <div ref={wrapperRef} style={{ height: '100%' }}>
-      <ScheduleXCalendar
-        calendarApp={calendar}
-        customComponents={customComponents}
-      />
+      <ScheduleXCalendar calendarApp={calendar} />
     </div>
   );
 };

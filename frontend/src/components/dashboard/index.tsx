@@ -154,6 +154,13 @@ export default function Dashboard({ onLogout }: DashboardProps) {
                 <PiconRight width={20} height={20} />
               </button>
             </div>
+            <button
+              type="button"
+              className={styles.newReservationButton}
+              onClick={handleNewReservation}
+            >
+              新規予約
+            </button>
           </div>
         )}
         <div className={styles.view}>
@@ -164,7 +171,6 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               onDateClick={handleDateClick}
               onDayDetails={handleDayDetails}
               refreshKey={refreshKey}
-              onNewReservation={handleNewReservation}
             />
           ) : (
             <UserInfo refreshKey={refreshKey} />
