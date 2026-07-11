@@ -1,6 +1,7 @@
 import 'temporal-polyfill/global';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import ServiceWorkerRegister from '@/components/base/ServiceWorkerRegister';
 import '../styles/globals.scss';
 
 const geistSans = Geist({
@@ -14,8 +15,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: '401予約',
   title: '401予約管理システム',
   description: '401という部屋の予約の管理システム',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '401予約',
+  },
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/apple-touch-icon.png',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#4285f4',
 };
 
 export default function RootLayout({
@@ -34,6 +49,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {children}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
