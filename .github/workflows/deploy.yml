@@ -1,6 +1,6 @@
 name: Deploy
 
-# Build & Push Images の成功後に、VM 上の self-hosted runner で
+# Build & Push Images の成功後に、LXC コンテナ内の self-hosted runner で
 # 最新イメージを pull して起動し直す。
 on:
   workflow_run:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy to Proxmox VM
+    name: Deploy to Proxmox LXC
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, linux, x64]
     steps:
@@ -32,7 +32,7 @@ jobs:
         run: |
           ENV_SOURCE="${HOME}/.401-yoyaku.env"
           if [ ! -f "${ENV_SOURCE}" ]; then
-            echo "::error::${ENV_SOURCE} が見つかりません。VM で .env.prod.example を元に作成してください。"
+            echo "::error::${ENV_SOURCE} が見つかりません。コンテナ内で .env.prod.example を元に作成してください。"
             exit 1
           fi
           cp "${ENV_SOURCE}" .env

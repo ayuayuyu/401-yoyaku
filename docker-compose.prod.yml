@@ -1,8 +1,8 @@
-# 本番 (Proxmox VE の VM) 用 compose。
+# 本番 (Proxmox VE の LXC コンテナ) 用 compose。
 # self-hosted runner が GHCR からイメージを pull して起動する。
 # 外部公開は cloudflared (Cloudflare Tunnel) 経由。ポートは開けない。
 #
-# 必要な環境変数は VM 上の .env で与える (.env.prod.example 参照)。
+# 必要な環境変数はコンテナ内の .env で与える (.env.prod.example 参照)。
 
 services:
   db:

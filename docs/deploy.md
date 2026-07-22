@@ -1,8 +1,11 @@
-# デプロイ手順 (Proxmox VE + Cloudflare Tunnel)
+# デプロイ手順 (Proxmox VE LXC + Cloudflare Tunnel)
 
-401予約アプリを Proxmox VE の VM にデプロイするための手順。`lab-presence` と同じ
-「**GHCR にイメージを build&push → VM 上の self-hosted runner が pull して起動**」方式。
+401予約アプリを Proxmox VE の **LXC コンテナ**にデプロイするための手順。`lab-presence` と同じ
+「**GHCR にイメージを build&push → コンテナ内の self-hosted runner が pull して起動**」方式。
 外部公開は **Cloudflare Tunnel**。
+
+> LXC はホストのカーネルを共有するため、アプリ用イメージは引き続き **linux/amd64**（ホストが amd64 の場合）。
+> Docker を LXC 内で動かすには **nesting の有効化**が必要（下記 手順1）。
 
 ## アーキテクチャ
 
@@ -25,19 +28,37 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
 
 ---
 
-## 1. VM 準備 (Proxmox VE)
+## 1. LXC コンテナ準備 (Proxmox VE)
 
-1. Proxmox VE で VM を作成（**Debian 12 / Ubuntu 22.04+, amd64**、2vCPU / 2GB 目安）。SSH を有効化。
-2. リポジトリを clone し、セットアップスクリプトを実行:
+### 1-1. ホスト側: コンテナ作成 + nesting 有効化
+
+1. Proxmox で LXC コンテナを作成（**Debian 12 / Ubuntu 22.04+ テンプレ, amd64**、2 cores / 2GB 目安）。
+   unprivileged コンテナ推奨。
+2. **Docker-in-LXC 用に nesting を有効化**（Proxmox ホストのシェルで。`<CTID>` はコンテナID）:
+
+   ```bash
+   pct set <CTID> --features nesting=1,keyctl=1
+   pct reboot <CTID>
+   ```
+   - GUI の場合: コンテナ → Options → Features → **Nesting** と **keyctl** にチェック。
+   - Debian/Ubuntu テンプレは systemd 起動なので、後段の runner の systemd 登録も動く。
+
+   > Docker が起動しない/overlay で失敗する場合: nesting が入っているか再確認。
+   > それでも storage 由来で overlay2 が使えない場合は `fuse-overlayfs` を導入するか、
+   > コンテナを privileged にして再試行する。
+
+### 1-2. コンテナ内: Docker + .env
+
+3. コンテナに入り（`pct enter <CTID>` またはSSH）、リポジトリを clone してセットアップ:
 
    ```bash
    git clone https://github.com/ayuayuyu/401-yoyaku.git
    cd 401-yoyaku
-   bash scripts/setup-vm.sh      # Docker 導入 + ~/.401-yoyaku.env 雛形作成
+   bash scripts/setup-container.sh   # Docker 導入 + ~/.401-yoyaku.env 雛形作成
    ```
-   Docker グループ反映のため一度ログインし直す。
+   Docker グループ反映のため一度入り直す。
 
-3. `~/.401-yoyaku.env` を編集して本番値を設定（[`.env.prod.example`](../.env.prod.example) 参照）。
+4. `~/.401-yoyaku.env` を編集して本番値を設定（[`.env.prod.example`](../.env.prod.example) 参照）。
 
 ---
 
@@ -66,7 +87,7 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
 ## 4. self-hosted runner 登録
 
 1. GitHub → リポジトリ **Settings → Actions → Runners → New self-hosted runner** でトークンを取得。
-2. VM で:
+2. コンテナ内で:
 
    ```bash
    cd ~/401-yoyaku
@@ -84,7 +105,7 @@ master に push すると自動で回る:
 push → CI (lint/型/test/build) → build-images (GHCR へ amd64 イメージ) → deploy (runner が pull & up)
 ```
 
-手動で今すぐ動かしたい場合は VM 上で:
+手動で今すぐ動かしたい場合はコンテナ内で:
 
 ```bash
 cd ~/401-yoyaku
@@ -104,7 +125,7 @@ docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps
 # ログ
 docker compose -f docker-compose.prod.yml logs -f backend
-# ヘルスチェック (VM 内)
+# ヘルスチェック (コンテナ内)
 curl -sf http://localhost/health
 ```
 

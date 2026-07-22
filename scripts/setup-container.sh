@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Proxmox VE の VM (Debian/Ubuntu, amd64) に本番実行環境を用意する。
+# Proxmox VE の LXC コンテナ (Debian/Ubuntu, amd64) の中で本番実行環境を用意する。
 # - Docker Engine + compose plugin を導入
 # - 本番 .env の雛形 (~/.401-yoyaku.env) を作成
 #
-# 使い方: リポジトリを clone したディレクトリ直下で
-#   bash scripts/setup-vm.sh
+# 前提: Proxmox ホスト側で LXC の nesting を有効化しておくこと (Docker-in-LXC 要件)。
+#   pct set <CTID> --features nesting=1,keyctl=1   ならびに Debian/Ubuntu テンプレ。
+#   詳細は docs/deploy.md を参照。
+#
+# 使い方: LXC 内でリポジトリを clone したディレクトリ直下で
+#   bash scripts/setup-container.sh
 
 set -euo pipefail
 
