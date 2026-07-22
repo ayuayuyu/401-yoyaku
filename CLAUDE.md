@@ -134,7 +134,8 @@ GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 FRONTEND_URL                  http://localhost:3000
 GOOGLE_CALENDAR_SYNC_ENABLED  Google Calendar 同期 (今後)
-SLACK_NOTIFY_ENABLED          Slack 通知 (今後)
+SLACK_NOTIFY_ENABLED          Slack 通知の有効化 (予約作成/キャンセル時に Webhook 送信)
+SLACK_WEBHOOK_URL             Slack Incoming Webhook の URL (通知有効時に必須)
 ```
 
 **フロントエンド** (`yoyaku-frontend/.env`):

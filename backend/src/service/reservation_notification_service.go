@@ -20,8 +20,17 @@ type slackPayload struct {
 	Text string `json:"text"`
 }
 
+// slackHTTPClient は Slack Webhook への POST に使う。予約作成/キャンセルの
+// レスポンスパスから同期的に呼ばれるため、Slack 側の遅延でリクエストが
+// 詰まらないようタイムアウトを設定する。
+var slackHTTPClient = &http.Client{Timeout: 5 * time.Second}
+
+// jpWeekdays は time.Weekday(日=0) を日本語表記に対応させる。
+var jpWeekdays = [...]string{"日", "月", "火", "水", "木", "金", "土"}
+
 func (s *ReservationService) notifyReservationCreated(ctx context.Context, reservation db.Reservation, user db.User) {
-	if err := notifySlackReservationCreated(reservation, user); err != nil {
+	message := formatReservationSlackMessage("✅", "予約しました", reservation, user)
+	if err := notifySlack(message); err != nil {
 		log.Printf("slack notification failed: %v", err)
 	}
 	if err := syncGoogleCalendarEvent(ctx, reservation, user); err != nil {
@@ -29,7 +38,35 @@ func (s *ReservationService) notifyReservationCreated(ctx context.Context, reser
 	}
 }
 
-func notifySlackReservationCreated(reservation db.Reservation, user db.User) error {
+func (s *ReservationService) notifyReservationCanceled(reservation db.Reservation, user db.User) {
+	message := formatReservationSlackMessage("❌", "予約をキャンセルしました", reservation, user)
+	if err := notifySlack(message); err != nil {
+		log.Printf("slack notification failed: %v", err)
+	}
+}
+
+// formatReservationSlackMessage は「何月何日に誰が予約(またはキャンセル)したか」を
+// 主役にした放送文を組み立てる。TIMESTAMPTZ は絶対時刻なので、表示は必ず JST に
+// 変換してから月日・曜日・時刻を出す。
+func formatReservationSlackMessage(emoji, action string, reservation db.Reservation, user db.User) string {
+	loc := mustLoadTokyoLocation()
+	start := reservation.StartTime.In(loc)
+	end := reservation.EndTime.In(loc)
+
+	dateLabel := fmt.Sprintf("%d月%d日(%s)", int(start.Month()), start.Day(), jpWeekdays[start.Weekday()])
+
+	return fmt.Sprintf(
+		"%s %s、%s さんが%s\n🕒 %s〜%s",
+		emoji,
+		dateLabel,
+		user.Name,
+		action,
+		start.Format("15:04"),
+		end.Format("15:04"),
+	)
+}
+
+func notifySlack(message string) error {
 	if strings.ToLower(os.Getenv("SLACK_NOTIFY_ENABLED")) != "true" {
 		return nil
 	}
@@ -39,20 +76,12 @@ func notifySlackReservationCreated(reservation db.Reservation, user db.User) err
 		return fmt.Errorf("SLACK_WEBHOOK_URL is empty")
 	}
 
-	message := fmt.Sprintf(
-		":spiral_calendar_pad: 新しい予約が登録されました\n予約者: %s\nタイトル: %s\n時間: %s - %s",
-		user.Name,
-		reservation.Title,
-		reservation.StartTime.Format("2006-01-02 15:04"),
-		reservation.EndTime.Format("15:04"),
-	)
-
 	body, err := json.Marshal(slackPayload{Text: message})
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewReader(body))
+	resp, err := slackHTTPClient.Post(webhookURL, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
