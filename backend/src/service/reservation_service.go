@@ -96,6 +96,10 @@ func (s *ReservationService) GetMyReservations(ctx context.Context, userID int64
 }
 
 func (s *ReservationService) Cancel(ctx context.Context, userID int64, id int64) error {
+	// 通知に使う予約情報を先に取得しておく（キャンセルで status は変わるが、
+	// タイトルや時刻は不変）。取得失敗は通知を諦めるだけでキャンセルは続行する。
+	reservation, resErr := s.queries.GetReservationByID(ctx, id)
+
 	err := s.queries.CanceledReservationByID(ctx, db.CanceledReservationByIDParams{
 		UserID: userID,
 		ID:     id,
@@ -103,6 +107,14 @@ func (s *ReservationService) Cancel(ctx context.Context, userID int64, id int64)
 	if err != nil {
 		return ErrCancelFailed
 	}
+
+	// 本人の予約が実際にキャンセルされたときのみ通知する。
+	if resErr == nil && reservation.UserID == userID {
+		if user, userErr := s.queries.GetUserByID(ctx, userID); userErr == nil {
+			s.notifyReservationCanceled(reservation, user)
+		}
+	}
+
 	return nil
 }
 

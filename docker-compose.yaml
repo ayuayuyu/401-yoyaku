@@ -37,7 +37,8 @@ services:
       SECRET_KEY: secret-key
       FRONTEND_URL: http://localhost:3000
       GOOGLE_CALENDAR_SYNC_ENABLED: "false"
-      SLACK_NOTIFY_ENABLED: "false"
+      SLACK_NOTIFY_ENABLED: "${SLACK_NOTIFY_ENABLED:-false}"
+      SLACK_WEBHOOK_URL: "${SLACK_WEBHOOK_URL:-}"
     tty: true
     depends_on:
       db:
