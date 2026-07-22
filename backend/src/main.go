@@ -47,15 +47,32 @@ func main() {
 
 	// セッション情報を保存するためのストア
 	var store = sessions.NewCookieStore([]byte(secretKey))
+	// Cookie の既定オプション。本番 (HTTPS) では COOKIE_SECURE=true で Secure 化する。
+	store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 7,
+		HttpOnly: true,
+		Secure:   os.Getenv("COOKIE_SECURE") == "true",
+		SameSite: http.SameSiteLaxMode,
+	}
 
 	// Ginのルーティング
 	r := gin.Default()
 
-	// CORS設定
+	// CORS設定。本番はフロントの公開オリジンを許可する (未設定時は開発用)。
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000"}
+	config.AllowOrigins = []string{frontendURL}
 	config.AllowCredentials = true
 	r.Use(cors.New(config))
+
+	// ヘルスチェック (compose / デプロイ検証用)。
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	// セッションミドルウェア
 	r.Use(func(c *gin.Context) {

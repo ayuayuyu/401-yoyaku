@@ -10,7 +10,7 @@ const LoginPage = () => {
   const handleGoogleLogin = () => {
     setIsLoading(true);
     // バックエンドのログインエンドポイントにリダイレクトする
-    window.location.href = process.env.NEXT_PUBLIC_API_URL + '/login';
+    window.location.href = (process.env.NEXT_PUBLIC_API_URL ?? '') + '/login';
   };
 
   return (

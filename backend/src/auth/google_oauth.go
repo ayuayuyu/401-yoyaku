@@ -29,8 +29,14 @@ func Setup() error {
 		return fmt.Errorf("環境変数 GOOGLE_CLIENT_SECRET が設定されていません")
 	}
 
+	// 本番はトンネル配下の HTTPS ドメインを指す。未設定時は開発用の localhost。
+	redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+	if redirectURL == "" {
+		redirectURL = "http://localhost:8080/callback"
+	}
+
 	GoogleOauthConfig = &oauth2.Config{
-		RedirectURL:  "http://localhost:8080/callback",
+		RedirectURL:  redirectURL,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Scopes: []string{
