@@ -292,7 +292,7 @@ const ReservationForm = ({
             onChange={handleChange}
           />
           <label htmlFor="addToGoogleCalendar">
-            自分の Google カレンダーに追加する
+            Google カレンダーに共有
           </label>
         </div>
 
