@@ -33,17 +33,8 @@ func (s *ReservationService) addToReserverGoogleCalendar(
 	if !user.GoogleRefreshToken.Valid || user.GoogleRefreshToken.String == "" {
 		return GCalStatusNeedsRelogin
 	}
-	if auth.GoogleOauthConfig == nil {
-		log.Printf("personal google calendar: oauth config is not initialized")
-		return GCalStatusFailed
-	}
 
-	// refresh token から自動更新されるトークンソースを作る。
-	tokenSource := auth.GoogleOauthConfig.TokenSource(ctx, &oauth2.Token{
-		RefreshToken: user.GoogleRefreshToken.String,
-	})
-
-	svc, err := calendar.NewService(ctx, option.WithTokenSource(tokenSource))
+	svc, err := newReserverCalendarService(ctx, user)
 	if err != nil {
 		log.Printf("personal google calendar: new service failed: %v", err)
 		return GCalStatusFailed
@@ -68,7 +59,7 @@ func (s *ReservationService) addToReserverGoogleCalendar(
 		return GCalStatusFailed
 	}
 
-	// 将来のキャンセル同期用にイベントIDを保存する (ベストエフォート)。
+	// キャンセル同期用にイベントIDを保存する (ベストエフォート)。
 	if created != nil && created.Id != "" {
 		if err := s.queries.SetReservationGoogleEventID(ctx, db.SetReservationGoogleEventIDParams{
 			ID:            reservation.ID,
@@ -79,4 +70,36 @@ func (s *ReservationService) addToReserverGoogleCalendar(
 	}
 
 	return GCalStatusAdded
+}
+
+// newReserverCalendarService は予約者本人の refresh token から Google Calendar
+// クライアントを生成する。refresh token の有無は呼び出し側で確認済みとする。
+func newReserverCalendarService(ctx context.Context, user db.User) (*calendar.Service, error) {
+	if auth.GoogleOauthConfig == nil {
+		return nil, fmt.Errorf("oauth config is not initialized")
+	}
+	// refresh token から自動更新されるトークンソースを作る。
+	tokenSource := auth.GoogleOauthConfig.TokenSource(ctx, &oauth2.Token{
+		RefreshToken: user.GoogleRefreshToken.String,
+	})
+	return calendar.NewService(ctx, option.WithTokenSource(tokenSource))
+}
+
+// deleteReserverGoogleCalendarEvent は予約者本人のカレンダーから予定を削除する
+// (キャンセル同期)。refresh token が無い場合や削除失敗はログのみで、キャンセル
+// 処理自体は成功させる。
+func (s *ReservationService) deleteReserverGoogleCalendarEvent(ctx context.Context, user db.User, eventID string) {
+	if !user.GoogleRefreshToken.Valid || user.GoogleRefreshToken.String == "" {
+		return
+	}
+
+	svc, err := newReserverCalendarService(ctx, user)
+	if err != nil {
+		log.Printf("personal google calendar: new service failed: %v", err)
+		return
+	}
+
+	if err := svc.Events.Delete("primary", eventID).Do(); err != nil {
+		log.Printf("personal google calendar: delete failed: %v", err)
+	}
 }

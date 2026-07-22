@@ -56,6 +56,7 @@ const ReservationForm = ({
     time: '',
     duration: '60',
     notes: '',
+    addToGoogleCalendar: false,
   });
   const [feedback, setFeedback] = useState<{
     title: string;
@@ -81,9 +82,13 @@ const ReservationForm = ({
     >,
   ) => {
     const { name, value } = e.target;
+    const nextValue =
+      e.target instanceof HTMLInputElement && e.target.type === 'checkbox'
+        ? e.target.checked
+        : value;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
   };
 
@@ -144,16 +149,30 @@ const ReservationForm = ({
     }
 
     try {
-      await fetchReservations({
+      const response = await fetchReservations({
         title: formData.title,
         start_time: toApiDateTime(formData.date, formData.time),
         end_time: toApiDateTime(toDateInputValue(end), toTimeInputValue(end)),
         notes: formData.notes,
+        add_to_google_calendar: formData.addToGoogleCalendar,
       });
+
+      let message = '予約が登録されました。';
+      if (formData.addToGoogleCalendar) {
+        if (response.google_calendar === 'added') {
+          message = '予約を登録し、Google カレンダーに追加しました。';
+        } else if (response.google_calendar === 'needs_relogin') {
+          message =
+            '予約は登録しました。Google カレンダーへの追加には、一度ログインし直してカレンダーへのアクセスを許可してください。';
+        } else if (response.google_calendar === 'failed') {
+          message =
+            '予約は登録しましたが、Google カレンダーへの追加に失敗しました。';
+        }
+      }
 
       setFeedback({
         title: '予約登録',
-        message: '予約が登録されました。',
+        message,
         onConfirm: () => {
           setFeedback(null);
           onSuccess();
@@ -262,6 +281,19 @@ const ReservationForm = ({
             onChange={handleChange}
             rows={3}
           />
+        </div>
+
+        <div className={styles.checkboxGroup}>
+          <input
+            type="checkbox"
+            id="addToGoogleCalendar"
+            name="addToGoogleCalendar"
+            checked={formData.addToGoogleCalendar}
+            onChange={handleChange}
+          />
+          <label htmlFor="addToGoogleCalendar">
+            自分の Google カレンダーに追加する
+          </label>
         </div>
 
         <div className={styles.formActions}>

@@ -108,10 +108,14 @@ func (s *ReservationService) Cancel(ctx context.Context, userID int64, id int64)
 		return ErrCancelFailed
 	}
 
-	// 本人の予約が実際にキャンセルされたときのみ通知する。
+	// 本人の予約が実際にキャンセルされたときのみ通知・カレンダー同期する。
 	if resErr == nil && reservation.UserID == userID {
 		if user, userErr := s.queries.GetUserByID(ctx, userID); userErr == nil {
 			s.notifyReservationCanceled(reservation, user)
+			// 本人カレンダーに連携済み(イベントID保持)なら予定を削除する。
+			if reservation.GoogleEventID.Valid && reservation.GoogleEventID.String != "" {
+				s.deleteReserverGoogleCalendarEvent(ctx, user, reservation.GoogleEventID.String)
+			}
 		}
 	}
 
