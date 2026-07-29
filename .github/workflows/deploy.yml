@@ -1,0 +1,73 @@
+name: Deploy
+
+# 「Build & Push Images」成功後に発火し、CT 上の self-hosted runner で
+# GHCR のイメージを pull して再起動する。CT ではビルドしない(pull のみ)。
+on:
+  workflow_run:
+    workflows: ["Build & Push Images"]
+    types: [completed]
+    branches: [main]
+
+# 同時デプロイを防止する
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy to Proxmox CT
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Restore .env.prod from persistent location
+        run: |
+          ENV_SOURCE="${HOME}/.401.env"
+          if [ ! -f "${ENV_SOURCE}" ]; then
+            echo "::error::${ENV_SOURCE} が見つかりません。CT で実値を配置してください:"
+            echo "::error::  cp .env.prod.example ~/.401.env && vim ~/.401.env"
+            exit 1
+          fi
+          cp "${ENV_SOURCE}" .env.prod
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull and restart services
+        run: |
+          docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --remove-orphans
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to become healthy..."
+          for i in $(seq 1 30); do
+            if docker compose -f docker-compose.prod.yml ps --format json | grep -qE '"(unhealthy|starting)"'; then
+              echo "  attempt $i/30: services still starting..."
+              sleep 5
+            else
+              echo "All services are up."
+              exit 0
+            fi
+          done
+          echo "::error::Services did not become healthy within 150 seconds"
+          docker compose -f docker-compose.prod.yml ps
+          docker compose -f docker-compose.prod.yml logs --tail=50
+          exit 1
+
+      - name: Verify deployment
+        run: |
+          docker compose -f docker-compose.prod.yml ps
+          echo ""
+          curl -sf http://localhost/health && echo " Backend is responding." \
+            || echo "::warning::Health check failed (may still be starting)"
+
+      - name: Remove old Docker images
+        run: docker image prune -f
