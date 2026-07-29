@@ -29,8 +29,13 @@ func Setup() error {
 		return fmt.Errorf("環境変数 GOOGLE_CLIENT_SECRET が設定されていません")
 	}
 
+	redirectURL := os.Getenv("OAUTH_REDIRECT_URL")
+	if redirectURL == "" {
+		redirectURL = "http://localhost:8080/callback"
+	}
+
 	GoogleOauthConfig = &oauth2.Config{
-		RedirectURL:  "http://localhost:8080/callback",
+		RedirectURL:  redirectURL,
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Scopes: []string{

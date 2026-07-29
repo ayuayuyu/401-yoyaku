@@ -9,8 +9,9 @@ const LoginPage = () => {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    // バックエンドのログインエンドポイントにリダイレクトする
-    window.location.href = process.env.NEXT_PUBLIC_API_URL + '/login';
+    // バックエンドのログインエンドポイントにリダイレクトする。
+    // 本番は同一オリジン配信のため NEXT_PUBLIC_API_URL は空 (=相対 /login)。
+    window.location.href = (process.env.NEXT_PUBLIC_API_URL ?? '') + '/login';
   };
 
   return (
