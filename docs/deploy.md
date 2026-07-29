@@ -99,7 +99,7 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
 
 ## 5. 初回デプロイ
 
-master に push すると自動で回る:
+main に push すると自動で回る:
 
 ```
 push → CI (lint/型/test/build) → build-images (GHCR へ amd64 イメージ) → deploy (runner が pull & up)

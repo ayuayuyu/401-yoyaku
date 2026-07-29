@@ -200,14 +200,14 @@ NEXT_PUBLIC_API_URL           http://localhost:8080
   - `pre-commit`: staged の `*.go` を `gofmt -w` で**自動整形**して再ステージ。
   - `pre-push`: 変更領域を検査し、**lint/format/型/vet/test のいずれか失敗で push を中止**。
     緊急回避は `--no-verify`（CI が最終ゲート）。
-- **GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）**: push と master 宛て PR で実行。
+- **GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）**: push と main 宛て PR で実行。
   - frontend: `npm ci`→`lint`→`typecheck`(tsc --noEmit)→`build`
   - backend: `gofmt -l` チェック→`go vet`→`go build`→`go test`→`sqlc generate` 差分チェック
   - docker-build: frontend/backend の Dockerfile をビルド検証（CD の入口、push はしない）
   - commit-check: PR コミットの Conventional Commits 検証
 - **パッケージマネージャ**: CI/Docker は **npm** 基準（`package-lock.json`）。`pnpm-lock.yaml` も同期済み。
   依存を変更したら `package-lock.json` と `pnpm-lock.yaml` の**両方**を更新してコミットする。
-- push を実効的に制限するには GitHub 側で **master のブランチ保護**（PR 必須＋必須ステータスチェック）を設定する（手順は docs 参照）。
+- push を実効的に制限するには GitHub 側で **main のブランチ保護**（PR 必須＋必須ステータスチェック）を設定する（手順は docs 参照）。
 - コミット型の規約: `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`（破壊的変更は `!` 付き）。
 
 ---

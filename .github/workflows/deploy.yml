@@ -6,7 +6,7 @@ on:
   workflow_run:
     workflows: ["Build & Push Images"]
     types: [completed]
-    branches: [master]
+    branches: [main]
 
 # 同時デプロイを防止する。
 concurrency:

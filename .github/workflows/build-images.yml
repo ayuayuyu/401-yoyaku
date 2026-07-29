@@ -1,10 +1,10 @@
 name: Build & Push Images
 
-# master への push で本番イメージを GHCR に build & push する。
+# main への push で本番イメージを GHCR に build & push する。
 # CI (lint/型/test/build) が緑のときのみ実行し、完了後に Deploy が走る。
 on:
   push:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: build-images
