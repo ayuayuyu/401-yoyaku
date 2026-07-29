@@ -1,8 +1,12 @@
 node_modules
 .next
+out
 .git
 .DS_Store
 coverage
 npm-debug.log
 pnpm-debug.log
 dist
+# ローカルの .env(localhost 値) を本番イメージビルドに混入させない
+.env
+.env.*

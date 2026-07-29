@@ -1,0 +1,78 @@
+# 本番用 Compose。CT(LXC) 上で GHCR のイメージを pull して起動する。
+#   起動: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#   image: を優先し、build: はローカル検証用のフォールバック。
+# 外部公開は CT ホストの cloudflared(systemd) → localhost:80(nginx) 経由。
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      TZ: Asia/Tokyo
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - private-net
+
+  backend:
+    image: ghcr.io/ayuayuyu/401-backend:latest
+    build:
+      context: ./backend/src
+      dockerfile: ../build/go/Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+      OAUTH_REDIRECT_URL: ${OAUTH_REDIRECT_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      GOOGLE_CALENDAR_SYNC_ENABLED: ${GOOGLE_CALENDAR_SYNC_ENABLED:-false}
+      SLACK_NOTIFY_ENABLED: ${SLACK_NOTIFY_ENABLED:-false}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    networks:
+      - private-net
+
+  nginx:
+    image: ghcr.io/ayuayuyu/401-nginx:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - private-net
+
+volumes:
+  db-data:
+
+networks:
+  private-net:
+    driver: bridge

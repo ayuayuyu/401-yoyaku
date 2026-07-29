@@ -1,0 +1,3 @@
+# 本番用の実値環境変数 (テンプレートの .env.prod.example のみ管理する)
+.env.prod
+.env.prod.local
