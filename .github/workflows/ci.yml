@@ -1,11 +1,11 @@
 name: CI
 
-# push（全ブランチ）と master 宛て PR で実行。lint/format/型/テスト/ビルドを
+# push（全ブランチ）と main 宛て PR で実行。lint/format/型/テスト/ビルドを
 # バイパス不可の最終ゲートとして回す。ローカルの .githooks が一次ゲート。
 on:
   push:
   pull_request:
-    branches: [master]
+    branches: [main]
   # build-images.yml から再利用 (イメージ build の前段ゲート) する。
   workflow_call:
 

@@ -45,7 +45,7 @@ type: feat | fix | docs | style | refactor | perf | test | build | ci | chore | 
 
 ## 3. GitHub Actions（CI）
 
-トリガー: `push`（全ブランチ）と `pull_request`（master 宛て）。ジョブ:
+トリガー: `push`（全ブランチ）と `pull_request`（main 宛て）。ジョブ:
 
 | ジョブ | 内容 |
 |---|---|
@@ -66,7 +66,7 @@ type: feat | fix | docs | style | refactor | perf | test | build | ci | chore | 
 
 push 制限を実効化するには、リポジトリ設定でブランチ保護を有効にする（ファイルでは設定不可）。
 
-**Settings → Branches → Add branch ruleset（または Add rule）** で `master` に対し:
+**Settings → Branches → Add branch ruleset（または Add rule）** で `main` に対し:
 
 - ✅ Require a pull request before merging（直接 push を禁止）
 - ✅ Require status checks to pass before merging → 必須チェックに
@@ -78,7 +78,7 @@ push 制限を実効化するには、リポジトリ設定でブランチ保護
 CLI 例（`gh` + API。`OWNER/REPO` は置換）:
 
 ```bash
-gh api -X PUT repos/OWNER/REPO/branches/master/protection \
+gh api -X PUT repos/OWNER/REPO/branches/main/protection \
   -H "Accept: application/vnd.github+json" \
   -f "required_pull_request_reviews.required_approving_review_count=1" \
   -F "enforce_admins=true" \
