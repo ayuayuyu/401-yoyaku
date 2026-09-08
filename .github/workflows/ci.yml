@@ -88,25 +88,64 @@ jobs:
           fi
 
   docker-build:
-    name: Docker build (frontend / backend)
+    name: Docker build (dev / prod)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build frontend image
+      # --- 開発用イメージ (docker-compose.yaml) ---
+      - name: Build frontend dev image
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: false
 
-      - name: Build backend image
+      - name: Build backend dev image
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/build/go/Dockerfile
           push: false
+
+      # --- 本番用イメージ (docker-compose.prod.yml / CD が GHCR へ push するもの) ---
+      # build-images.yml は main への push でしか回らないため、ここで PR 段階から
+      # 本番 Dockerfile の破損を検知する。
+      - name: Build frontend prod image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
+          push: false
+          load: true
+          tags: 401-yoyaku-frontend:ci
+          build-args: |
+            NEXT_PUBLIC_API_URL=
+
+      - name: Build backend prod image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+
+      # イメージに焼き込んだ nginx.conf の構文検証。upstream "backend" は
+      # compose ネットワーク上のサービス名なので、ここではダミーで解決させる。
+      - name: Validate baked nginx config
+        run: |
+          docker run --rm --add-host backend:127.0.0.1 \
+            401-yoyaku-frontend:ci nginx -t
+
+      # 本番は same-origin 配信なので、生成物に開発用の絶対 URL が混ざっていないこと。
+      # (frontend/.env が誤ってビルドに効くと localhost:8080 が焼き付いてしまう)
+      - name: Assert no dev API URL is baked into the export
+        run: |
+          if docker run --rm --entrypoint sh 401-yoyaku-frontend:ci -c \
+              'grep -rl "localhost:8080" /usr/share/nginx/html'; then
+            echo "::error::静的エクスポートに localhost:8080 が埋め込まれています。NEXT_PUBLIC_API_URL の扱いを確認してください。"
+            exit 1
+          fi
 
   commit-check:
     name: Conventional Commits

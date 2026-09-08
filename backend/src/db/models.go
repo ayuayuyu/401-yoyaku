@@ -30,6 +30,7 @@ type User struct {
 	AvatarUrl          sql.NullString `json:"avatar_url"`
 	GoogleRefreshToken sql.NullString `json:"google_refresh_token"`
 	Role               string         `json:"role"`
+	LastLoginAt        sql.NullTime   `json:"last_login_at"`
 	CreatedAt          time.Time      `json:"created_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
 	DeletedAt          sql.NullTime   `json:"deleted_at"`

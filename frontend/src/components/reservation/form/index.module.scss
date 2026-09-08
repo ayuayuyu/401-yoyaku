@@ -37,6 +37,12 @@
       resize: vertical;
       min-height: 80px;
     }
+
+    .fieldNote {
+      margin: 0.4rem 0 0;
+      font-size: 0.8rem;
+      color: $color-gray;
+    }
   }
 
   .timeSelectRow {

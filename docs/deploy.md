@@ -91,9 +91,11 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
 
    ```bash
    cd ~/401-yoyaku
-   bash scripts/setup-runner.sh ayuayuyu/401-yoyaku <RUNNER_TOKEN>
+   bash scripts/setup-runner.sh ayuayuyu/401-yoyaku <RUNNER_TOKEN> [runner名]
    ```
    `self-hosted,linux,x64` ラベルの runner が systemd サービスとして常駐する。
+   root 運用の LXC でもそのまま動く（`RUNNER_ALLOW_RUNASROOT` と .NET 依存パッケージを
+   スクリプト側で面倒を見る）。
 
 ---
 
@@ -135,6 +137,10 @@ curl -sf http://localhost/health
 | ログイン後すぐログアウト状態 | `COOKIE_SECURE=true` か（HTTPS 必須）、`FRONTEND_URL` が実ドメインか |
 | 502 / トンネルは繋がるが表示されない | Public hostname の service が `http://nginx:80` か、`nginx`/`backend` が healthy か |
 | デプロイが走らない | runner がオンラインか（`svc.sh status`）、build-images が緑か |
+| `Cannot connect to the Docker daemon` | LXC の nesting/keyctl（手順1-1）。`journalctl -u docker -n 20` |
+| runner 設定が `Couldn't find a valid ICU package` で落ちる | `bin/installdependencies.sh` が走ったか（setup-runner.sh が実行する）|
+| runner 設定が `Must not run with sudo` で落ちる | root 実行時は `RUNNER_ALLOW_RUNASROOT=1`（setup-runner.sh が設定する）|
+| PWA が古いまま更新されない | `curl -I https://<ドメイン>/sw.js` の `Cache-Control: no-cache`。Cloudflare のキャッシュもパージ |
 
 ---
 
@@ -143,10 +149,16 @@ curl -sf http://localhost/health
 手元で本番イメージが組めるか検証（cloudflared 抜き）:
 
 ```bash
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d db backend nginx
+# ルートの .env は開発用 compose が使っているので上書きしない。
+# 本番用の値は別ファイルに書いて --env-file で渡す。
+docker compose -p 401-prodtest --env-file ./prod-test.env -f docker-compose.prod.yml build
+docker compose -p 401-prodtest --env-file ./prod-test.env -f docker-compose.prod.yml up -d db backend nginx
 curl -sf http://localhost/health   # {"status":"ok"}
 curl -s http://localhost/ | head   # フロントの HTML
-docker compose -f docker-compose.prod.yml down
+docker compose -p 401-prodtest --env-file ./prod-test.env -f docker-compose.prod.yml down -v
 ```
-（DATABASE_URL/SECRET_KEY/GOOGLE_* を含む `.env` が必要。OAuth の実挙動は本番ドメインでのみ確認可能。）
+
+- `prod-test.env` には `DATABASE_URL` / `SECRET_KEY` / `GOOGLE_*` が要る（[`.env.prod.example`](../.env.prod.example) をコピーしてダミー値で可）。
+  backend の `env_file: .env` はルートの `.env` を読むため、`env_file` を差し替える override を併用するか一時的に `.env` を用意する。
+- `backend/Dockerfile` は BuildKit の `TARGETARCH` に従うので、arm64 Mac でもそのまま動く（CI は `--platform linux/amd64`）。
+- OAuth の実挙動は本番ドメインでのみ確認可能。

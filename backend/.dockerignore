@@ -2,3 +2,10 @@
 .DS_Store
 *.log
 src/yoyaku
+
+# Air のビルド成果物
+src/tmp
+
+# ローカルの秘密情報 (compose の env で渡すのでイメージには不要)
+.env
+.env.*

@@ -37,3 +37,18 @@ func NewDBConnection() (*sql.DB, error) {
 	log.Println("Database connection established successfully.")
 	return db, nil
 }
+
+// EnsureSchema は schema.sql に後から追加した列を、既存DB(初回作成後は
+// docker-entrypoint-initdb.d が再実行されない)にも冪等に反映する簡易マイグレーション。
+// マイグレーション基盤が無いため、新規カラムはここに ADD COLUMN IF NOT EXISTS で足す。
+func EnsureSchema(db *sql.DB) error {
+	stmts := []string{
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.Exec(stmt); err != nil {
+			return err
+		}
+	}
+	return nil
+}

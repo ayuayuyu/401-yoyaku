@@ -79,13 +79,18 @@ types/    ← リクエスト型
 |---|---|---|
 | GET | `/login` | Google OAuth 開始 |
 | GET | `/callback` | OAuth コールバック |
-| GET | `/api/me` | ログインユーザ情報 |
+| GET | `/api/me` | ログインユーザ情報 (`role` を含む) |
 | POST | `/api/logout` | ログアウト |
 | POST | `/api/reservations` | 予約作成 |
 | PUT | `/api/reservations` | 予約編集 |
 | GET | `/api/reservations` | 予約一覧 (`?month=` / `?start=&end=` / `?date=` で切替) |
 | GET | `/api/reservations/me` | 自分の予約一覧 |
 | PUT | `/api/reservations/cancel` | 予約キャンセル |
+| GET | `/api/admin/users` | 【管理者】ユーザー一覧＋利用状況＋最終ログイン |
+| PUT | `/api/admin/users/role` | 【管理者】ユーザーの権限 (admin/user) 変更 |
+| GET | `/api/admin/reservations` | 【管理者】全員の予約一覧 (閲覧) |
+
+> `/api/admin/*` は `AdminMiddleware` で保護され、role=admin 以外は 403。role は DB を正とする。
 
 ### フロントエンド ([yoyaku-frontend/src/](yoyaku-frontend/src/))
 
@@ -136,6 +141,7 @@ FRONTEND_URL                  http://localhost:3000
 GOOGLE_CALENDAR_SYNC_ENABLED  Google Calendar 同期 (今後)
 SLACK_NOTIFY_ENABLED          Slack 通知の有効化 (予約作成/キャンセル時に Webhook 送信)
 SLACK_WEBHOOK_URL             Slack Incoming Webhook の URL (通知有効時に必須)
+ADMIN_EMAILS                  初期管理者メール (カンマ区切り)。ログイン時に admin へ自動昇格
 ```
 
 **フロントエンド** (`yoyaku-frontend/.env`):

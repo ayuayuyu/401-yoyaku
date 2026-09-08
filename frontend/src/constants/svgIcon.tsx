@@ -112,3 +112,20 @@ export function MdiHistory(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function MdiShieldAccount(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      {...props}
+    >
+      <path
+        fill="currentColor"
+        d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12c5.16-1.26 9-6.45 9-12V5zm0 6a3 3 0 0 1 3 3a3 3 0 0 1-3 3a3 3 0 0 1-3-3a3 3 0 0 1 3-3m0 7.9c2 0 4.11.9 4.11 2.1a7.4 7.4 0 0 1-8.22 0c0-1.2 2.11-2.1 4.11-2.1"
+      ></path>
+    </svg>
+  );
+}

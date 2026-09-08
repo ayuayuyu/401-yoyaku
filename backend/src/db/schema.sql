@@ -8,6 +8,8 @@ CREATE TABLE users(
   -- 本人の Google カレンダー連携用 refresh token (オフラインアクセス)
   google_refresh_token TEXT,
   role VARCHAR(50) NOT NULL DEFAULT 'user',
+  -- 直近の Google ログイン日時。未ログイン (一度もログインしていない) 場合は NULL。
+  last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ

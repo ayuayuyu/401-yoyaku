@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"yoyaku/auth"
+	"yoyaku/db"
 	"yoyaku/service"
 
 	"github.com/gin-gonic/gin"
@@ -72,6 +73,17 @@ func (h *AuthHandler) HandleGoogleCallback(c *gin.Context) {
 		if err := h.service.SaveGoogleRefreshToken(context.Background(), dbUser.ID, token.RefreshToken); err != nil {
 			log.Println("refresh token の保存に失敗:", err)
 		}
+	}
+
+	// ADMIN_EMAILS に該当するユーザーを管理者へ自動昇格する (初期管理者のブートストラップ)。
+	// 失敗してもログインは継続する。
+	if err := h.service.EnsureAdminFromEnv(context.Background(), dbUser); err != nil {
+		log.Println("管理者への自動昇格に失敗:", err)
+	}
+
+	// 最終ログイン日時を記録する。失敗してもログインは継続する。
+	if err := h.service.RecordLogin(context.Background(), dbUser.ID); err != nil {
+		log.Println("最終ログイン日時の記録に失敗:", err)
 	}
 
 	// セッションに保存
@@ -161,11 +173,23 @@ func HandleGetMe(c *gin.Context) {
 		return
 	}
 
+	// role は DB を正とする (管理者が権限を変更しても再ログイン不要で反映される)。
+	// 取得に失敗した場合は既定の "user" として扱う。
+	role := "user"
+	if queries, ok := c.MustGet("db_queries").(*db.Queries); ok {
+		if id, err := strconv.ParseInt(userID, 10, 64); err == nil {
+			if user, err := queries.GetUserByID(c.Request.Context(), id); err == nil {
+				role = user.Role
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"id":      userID,
 		"email":   session.Values["user_email"],
 		"name":    session.Values["user_name"],
 		"picture": session.Values["user_picture"],
+		"role":    role,
 	})
 }
 

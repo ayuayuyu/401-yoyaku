@@ -39,6 +39,8 @@ services:
       GOOGLE_CALENDAR_SYNC_ENABLED: "false"
       SLACK_NOTIFY_ENABLED: "${SLACK_NOTIFY_ENABLED:-false}"
       SLACK_WEBHOOK_URL: "${SLACK_WEBHOOK_URL:-}"
+      # 初期管理者のメール (カンマ区切り)。該当ユーザはログイン時に admin へ自動昇格する。
+      ADMIN_EMAILS: "${ADMIN_EMAILS:-}"
     tty: true
     depends_on:
       db:

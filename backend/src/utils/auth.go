@@ -93,6 +93,45 @@ func GetUserIDFromSession(c *gin.Context) (int64, bool) {
 	return user.ID, true
 }
 
+// AdminMiddleware は管理者専用ルートを保護する Gin ミドルウェア。
+// セッションからユーザーを特定し、DB から最新の role を引いて "admin" 以外を
+// 403 で弾く。role は DB を正とするため、権限変更が即時に反映される。
+// 認証に成功したユーザーは c.Set("current_user", user) で後続ハンドラに渡す。
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := GetUserIDFromSession(c)
+		if !ok {
+			// GetUserIDFromSession が既にエラーレスポンスを返し Abort 済み。
+			return
+		}
+
+		queriesValue, ok := c.Get("db_queries")
+		if !ok {
+			log.Println("db_queriesの取得に失敗しました")
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "サーバー内部エラーが発生しました"})
+			c.Abort()
+			return
+		}
+		queries, ok := queriesValue.(*db.Queries)
+		if !ok {
+			log.Println("db_queriesの型変換に失敗しました")
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "サーバー内部エラーが発生しました"})
+			c.Abort()
+			return
+		}
+
+		user, err := queries.GetUserByID(c.Request.Context(), userID)
+		if err != nil || user.Role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "管理者権限が必要です"})
+			c.Abort()
+			return
+		}
+
+		c.Set("current_user", user)
+		c.Next()
+	}
+}
+
 func getValidUserID(c *gin.Context, session *sessions.Session) (int64, bool) {
 	userIDStr, ok := session.Values["user_id"].(string)
 	if !ok || userIDStr == "" {

@@ -186,7 +186,7 @@ func (q *Queries) GetReservationLastInserted(ctx context.Context) (Reservation, 
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, last_login_at, created_at, updated_at, deleted_at FROM users
 WHERE email = $1
   AND deleted_at IS NULL
 `
@@ -202,6 +202,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.AvatarUrl,
 		&i.GoogleRefreshToken,
 		&i.Role,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -210,7 +211,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByGoogleID = `-- name: GetUserByGoogleID :one
-SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, last_login_at, created_at, updated_at, deleted_at FROM users
 WHERE google_id = $1
   AND deleted_at IS NULL
 `
@@ -226,6 +227,7 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 		&i.AvatarUrl,
 		&i.GoogleRefreshToken,
 		&i.Role,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -234,7 +236,7 @@ func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID string) (User,
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, last_login_at, created_at, updated_at, deleted_at FROM users
 WHERE id = $1
   AND deleted_at IS NULL
 `
@@ -250,11 +252,70 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.AvatarUrl,
 		&i.GoogleRefreshToken,
 		&i.Role,
+		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const listAllReservationsWithUser = `-- name: ListAllReservationsWithUser :many
+SELECT r.id, r.user_id, r.title, r.start_time, r.end_time, r.status, r.notes, r.google_event_id, r.created_at, r.updated_at, u.name as user_name
+FROM reservations AS r
+JOIN users AS u ON r.user_id = u.id AND u.deleted_at IS NULL
+WHERE r.status = 'confirmed'
+ORDER BY r.start_time DESC
+LIMIT 500
+`
+
+type ListAllReservationsWithUserRow struct {
+	ID            int64          `json:"id"`
+	UserID        int64          `json:"user_id"`
+	Title         string         `json:"title"`
+	StartTime     time.Time      `json:"start_time"`
+	EndTime       time.Time      `json:"end_time"`
+	Status        string         `json:"status"`
+	Notes         string         `json:"notes"`
+	GoogleEventID sql.NullString `json:"google_event_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	UserName      string         `json:"user_name"`
+}
+
+func (q *Queries) ListAllReservationsWithUser(ctx context.Context) ([]ListAllReservationsWithUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAllReservationsWithUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllReservationsWithUserRow
+	for rows.Next() {
+		var i ListAllReservationsWithUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.StartTime,
+			&i.EndTime,
+			&i.Status,
+			&i.Notes,
+			&i.GoogleEventID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listReservationsByDate = `-- name: ListReservationsByDate :many
@@ -497,7 +558,7 @@ func (q *Queries) ListReservationsByWeek(ctx context.Context, arg ListReservatio
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, created_at, updated_at, deleted_at FROM users
+SELECT id, name, email, google_id, avatar_url, google_refresh_token, role, last_login_at, created_at, updated_at, deleted_at FROM users
 WHERE deleted_at IS NULL
 ORDER BY id
 `
@@ -519,9 +580,74 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.AvatarUrl,
 			&i.GoogleRefreshToken,
 			&i.Role,
+			&i.LastLoginAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersWithStats = `-- name: ListUsersWithStats :many
+SELECT
+  u.id,
+  u.name,
+  u.email,
+  u.avatar_url,
+  u.role,
+  u.last_login_at,
+  u.created_at,
+  COUNT(r.id) AS reservation_count,
+  COALESCE(SUM(EXTRACT(EPOCH FROM (r.end_time - r.start_time))), 0)::bigint AS total_seconds
+FROM users AS u
+LEFT JOIN reservations AS r
+  ON r.user_id = u.id AND r.status = 'confirmed'
+WHERE u.deleted_at IS NULL
+GROUP BY u.id
+ORDER BY u.name
+`
+
+type ListUsersWithStatsRow struct {
+	ID               int64          `json:"id"`
+	Name             string         `json:"name"`
+	Email            string         `json:"email"`
+	AvatarUrl        sql.NullString `json:"avatar_url"`
+	Role             string         `json:"role"`
+	LastLoginAt      sql.NullTime   `json:"last_login_at"`
+	CreatedAt        time.Time      `json:"created_at"`
+	ReservationCount int64          `json:"reservation_count"`
+	TotalSeconds     int64          `json:"total_seconds"`
+}
+
+func (q *Queries) ListUsersWithStats(ctx context.Context) ([]ListUsersWithStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersWithStats)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUsersWithStatsRow
+	for rows.Next() {
+		var i ListUsersWithStatsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.AvatarUrl,
+			&i.Role,
+			&i.LastLoginAt,
+			&i.CreatedAt,
+			&i.ReservationCount,
+			&i.TotalSeconds,
 		); err != nil {
 			return nil, err
 		}
@@ -607,6 +733,18 @@ func (q *Queries) UpdateUserGoogleRefreshToken(ctx context.Context, arg UpdateUs
 	return err
 }
 
+const updateUserLastLogin = `-- name: UpdateUserLastLogin :exec
+UPDATE users
+SET last_login_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) UpdateUserLastLogin(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, updateUserLastLogin, id)
+	return err
+}
+
 const updateUserName = `-- name: UpdateUserName :exec
 UPDATE users
 SET name = $2, updated_at = CURRENT_TIMESTAMP
@@ -621,5 +759,22 @@ type UpdateUserNameParams struct {
 
 func (q *Queries) UpdateUserName(ctx context.Context, arg UpdateUserNameParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserName, arg.ID, arg.Name)
+	return err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :exec
+UPDATE users
+SET role = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND deleted_at IS NULL
+`
+
+type UpdateUserRoleParams struct {
+	ID   int64  `json:"id"`
+	Role string `json:"role"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserRole, arg.ID, arg.Role)
 	return err
 }

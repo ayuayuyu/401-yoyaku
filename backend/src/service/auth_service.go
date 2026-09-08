@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"unicode/utf8"
 	"yoyaku/db"
@@ -82,6 +83,44 @@ func (s *AuthService) FindOrCreateUser(ctx context.Context, info GoogleUserInfo)
 	}
 
 	return dbUser, nil
+}
+
+// RecordLogin は Google ログイン成功時に呼び出し、最終ログイン日時を更新する。
+// 記録はログイン活動の把握用であり、失敗してもログイン自体は継続させる想定。
+func (s *AuthService) RecordLogin(ctx context.Context, userID int64) error {
+	return s.queries.UpdateUserLastLogin(ctx, userID)
+}
+
+// EnsureAdminFromEnv は、環境変数 ADMIN_EMAILS (カンマ区切り) に含まれるメールの
+// ユーザーを自動的に管理者へ昇格させる (初期管理者のブートストラップ用)。
+// 既に admin の場合や対象外のメールの場合は何もしない。
+func (s *AuthService) EnsureAdminFromEnv(ctx context.Context, user db.User) error {
+	if user.Role == "admin" || !isAdminEmail(user.Email) {
+		return nil
+	}
+	return s.queries.UpdateUserRole(ctx, db.UpdateUserRoleParams{
+		ID:   user.ID,
+		Role: "admin",
+	})
+}
+
+// isAdminEmail は ADMIN_EMAILS に指定されたメールかどうかを判定する
+// (前後空白除去・大文字小文字を無視して比較)。
+func isAdminEmail(email string) bool {
+	raw := os.Getenv("ADMIN_EMAILS")
+	if raw == "" {
+		return false
+	}
+	target := strings.ToLower(strings.TrimSpace(email))
+	if target == "" {
+		return false
+	}
+	for e := range strings.SplitSeq(raw, ",") {
+		if strings.ToLower(strings.TrimSpace(e)) == target {
+			return true
+		}
+	}
+	return false
 }
 
 // SaveGoogleRefreshToken は本人カレンダー連携用の refresh token を保存する。
