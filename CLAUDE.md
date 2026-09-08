@@ -152,8 +152,8 @@ src/instrumentation.ts   ← SSR 時の localStorage シム (Next.js 自動ロ�
 
 | キー | 説明 |
 |---|---|
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | db サービス。`DATABASE_URL` と一致させる |
-| `DATABASE_URL` | `postgres://user:password@db:5432/app?...` |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | db サービス。`DATABASE_URL` はここから組み立てられる |
+| ~~`DATABASE_URL`~~ | **`.env` に書かない。** compose が `POSTGRES_*` から組み立てて backend に渡す (手書きだと不一致・折り返し崩れの事故が起きたため)。パスワードは URL 安全な文字 (`A-Za-z0-9._~-`) のみ |
 | `SECRET_KEY` | セッション署名キー (必須。未設定なら起動時に `log.Fatalf`) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | 必須。未設定なら `auth.Setup()` がエラー |
 | `GOOGLE_REDIRECT_URL` | 未設定時は `http://localhost:8080/callback` |
