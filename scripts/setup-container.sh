@@ -2,7 +2,7 @@
 # Proxmox VE の LXC コンテナ (Debian/Ubuntu, amd64) の中で本番実行環境を用意する。
 # - 不足しがちな基本ツール (curl 等) を導入
 # - Docker Engine + compose plugin を導入し、実際に起動できるか検証
-# - 本番 .env の雛形 (~/.401-yoyaku.env) を作成
+# - 本番 .env の雛形 (/etc/401-yoyaku/.env) を作成
 #
 # 前提: Proxmox ホスト側で LXC の nesting を有効化しておくこと (Docker-in-LXC 要件)。
 #   pct set <CTID> --features nesting=1,keyctl=1
@@ -84,24 +84,34 @@ for SVC in nginx apache2; do
   fi
 done
 
-ENV_DEST="${HOME}/.401-yoyaku.env"
-if [ ! -f "${ENV_DEST}" ]; then
-  if [ -f .env.prod.example ]; then
-    cp .env.prod.example "${ENV_DEST}"
-    chmod 600 "${ENV_DEST}"
-    echo "==> ${ENV_DEST} を作成しました。値を編集してください:"
-    echo "      vim ${ENV_DEST}"
-  else
-    echo "[WARN] .env.prod.example が見つかりません。リポジトリ直下で実行してください。"
-  fi
-else
+# 本番 .env は固定パスに置く。deploy.yml の runner は systemd 配下で動き
+# $HOME が空になることがあるため、ホームディレクトリ基準にはしない。
+ENV_DIR="/etc/401-yoyaku"
+ENV_DEST="${ENV_DIR}/.env"
+LEGACY_ENV="${HOME:-/root}/.401-yoyaku.env"
+
+${SUDO} mkdir -p "${ENV_DIR}"
+${SUDO} chmod 700 "${ENV_DIR}"
+
+if [ -f "${ENV_DEST}" ]; then
   echo "  ${ENV_DEST} は既に存在します。編集のみ行ってください。"
+elif [ -f "${LEGACY_ENV}" ]; then
+  ${SUDO} mv "${LEGACY_ENV}" "${ENV_DEST}"
+  ${SUDO} chmod 600 "${ENV_DEST}"
+  echo "==> 旧 ${LEGACY_ENV} を ${ENV_DEST} へ移行しました。"
+elif [ -f .env.prod.example ]; then
+  ${SUDO} cp .env.prod.example "${ENV_DEST}"
+  ${SUDO} chmod 600 "${ENV_DEST}"
+  echo "==> ${ENV_DEST} を作成しました。値を編集してください:"
+  echo "      vim ${ENV_DEST}"
+else
+  echo "[WARN] .env.prod.example が見つかりません。リポジトリ直下で実行してください。"
 fi
 
 echo ""
 echo "=========================================="
 echo "  次のステップ:"
-echo "   1) vim ~/.401-yoyaku.env で本番値を設定"
+echo "   1) vim /etc/401-yoyaku/.env で本番値を設定"
 echo "   2) Cloudflare Zero Trust でトンネル作成 → TUNNEL_TOKEN を設定"
 echo "      public hostname を http://nginx:80 に向ける"
 echo "   3) bash scripts/setup-runner.sh ayuayuyu/401-yoyaku <RUNNER_TOKEN>"

@@ -32,9 +32,17 @@ jobs:
       # 持たない。LXC 内の永続パスから復元する。
       - name: Restore .env from persistent location
         run: |
-          ENV_SOURCE="${HOME}/.401-yoyaku.env"
+          # runner は systemd 配下で動くため $HOME が空になることがある
+          # (実際に "/.401-yoyaku.env が見つかりません" で失敗した)。
+          # 置き場所は固定パスを正とし、旧 ~/.401-yoyaku.env は移行用に見るだけ。
+          ENV_SOURCE="/etc/401-yoyaku/.env"
+          LEGACY_SOURCE="${HOME:-/root}/.401-yoyaku.env"
+          if [ ! -f "${ENV_SOURCE}" ] && [ -f "${LEGACY_SOURCE}" ]; then
+            echo "::warning::${LEGACY_SOURCE} を使用しています。${ENV_SOURCE} へ移動してください。"
+            ENV_SOURCE="${LEGACY_SOURCE}"
+          fi
           if [ ! -f "${ENV_SOURCE}" ]; then
-            echo "::error::${ENV_SOURCE} が見つかりません。LXC 内で 'bash scripts/setup-container.sh' を実行し、値を設定してください。"
+            echo "::error::/etc/401-yoyaku/.env が見つかりません。LXC 内で 'bash scripts/setup-container.sh' を実行し、値を設定してください。"
             exit 1
           fi
           cp "${ENV_SOURCE}" .env
