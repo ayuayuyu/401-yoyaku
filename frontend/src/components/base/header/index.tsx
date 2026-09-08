@@ -6,7 +6,7 @@ import { useAtomValue } from 'jotai';
 import { userAtom } from '@/store/user';
 import UserIcon from './user';
 import styles from './index.module.scss';
-import { MdiAccount, MdiLogout } from '@/constants/svgIcon';
+import { MdiAccount, MdiLogout, MdiShieldAccount } from '@/constants/svgIcon';
 
 
 interface HeaderProps {
@@ -88,6 +88,18 @@ const Header = ({ currentView, onViewChange, onLogout }: HeaderProps) => {
                 <MdiAccount />
                 <span>マイ予約</span>
               </button>
+              {user?.role === 'admin' && (
+                <button
+                  className={styles.menuItem}
+                  onClick={() => {
+                    onViewChange('admin');
+                    toggleMenu();
+                  }}
+                >
+                  <MdiShieldAccount />
+                  <span>管理ページ</span>
+                </button>
+              )}
               <button className={styles.menuItem} onClick={onLogout}>
                 <MdiLogout />
                 <span>ログアウト</span>

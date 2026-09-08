@@ -4,6 +4,7 @@ interface userProps {
   name: string;
   email: string;
   picture: string;
+  role: string;
 }
 
 export const userAtom = atom<userProps | null>(null);

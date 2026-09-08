@@ -41,6 +41,36 @@ SET name = $2, updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
   AND deleted_at IS NULL;
 
+-- name: UpdateUserLastLogin :exec
+UPDATE users
+SET last_login_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND deleted_at IS NULL;
+
+-- name: UpdateUserRole :exec
+UPDATE users
+SET role = $2, updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+  AND deleted_at IS NULL;
+
+-- name: ListUsersWithStats :many
+SELECT
+  u.id,
+  u.name,
+  u.email,
+  u.avatar_url,
+  u.role,
+  u.last_login_at,
+  u.created_at,
+  COUNT(r.id) AS reservation_count,
+  COALESCE(SUM(EXTRACT(EPOCH FROM (r.end_time - r.start_time))), 0)::bigint AS total_seconds
+FROM users AS u
+LEFT JOIN reservations AS r
+  ON r.user_id = u.id AND r.status = 'confirmed'
+WHERE u.deleted_at IS NULL
+GROUP BY u.id
+ORDER BY u.name;
+
 
 -- name: CreateReservation :execresult
 INSERT INTO reservations (
@@ -102,6 +132,14 @@ WHERE
   AND r.end_time >= $2
 ORDER BY
   r.start_time;
+
+-- name: ListAllReservationsWithUser :many
+SELECT r.*, u.name as user_name
+FROM reservations AS r
+JOIN users AS u ON r.user_id = u.id AND u.deleted_at IS NULL
+WHERE r.status = 'confirmed'
+ORDER BY r.start_time DESC
+LIMIT 500;
 
 -- name: UpdateReservationByID :execresult
 UPDATE reservations

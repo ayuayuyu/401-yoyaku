@@ -1,0 +1,211 @@
+.pageContainer {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  background-color: $color-light-blue-gray;
+  border-radius: 8px;
+}
+
+.pageTitle {
+  font-size: $font-size-semi-middle;
+  font-weight: $font-weight-semi-bold;
+  color: $color-black;
+  margin-bottom: 20px;
+}
+
+.statusText {
+  color: $color-gray;
+  padding: 16px 0;
+}
+
+.errorText {
+  color: $color-red;
+  padding: 16px 0;
+}
+
+.retryButton {
+  padding: 8px 16px;
+  font-size: $font-size-min;
+  font-weight: $font-weight-medium;
+  color: $color-white;
+  background-color: $color-blue;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $color-blue-hover;
+  }
+}
+
+/* サマリカード */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.card {
+  background-color: $color-white;
+  border: 1px solid $color-border;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.cardLabel {
+  font-size: $font-size-min;
+  color: $color-gray;
+  margin-bottom: 8px;
+}
+
+.cardValue {
+  font-size: $font-size-middle;
+  font-weight: $font-weight-semi-bold;
+  color: $color-blue;
+  word-break: break-word;
+}
+
+/* セクション */
+.section {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: $font-size-default;
+  font-weight: $font-weight-semi-bold;
+  color: $color-black;
+  margin-bottom: 12px;
+}
+
+/* テーブル */
+.tableWrap {
+  overflow-x: auto;
+  background-color: $color-white;
+  border: 1px solid $color-border;
+  border-radius: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-min;
+
+  th,
+  td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid $color-light-blue-gray;
+    white-space: nowrap;
+  }
+
+  th {
+    color: $color-gray;
+    font-weight: $font-weight-medium;
+    background-color: $color-white2;
+  }
+
+  td {
+    color: $color-black;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background-color: $color-light-blue;
+  }
+}
+
+.numCol {
+  text-align: right;
+}
+
+.emailCell {
+  color: $color-gray;
+  white-space: normal;
+  word-break: break-all;
+}
+
+/* 権限バッジ */
+.roleBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: $font-weight-medium;
+  border-radius: 999px;
+}
+
+.roleAdmin {
+  color: $color-white;
+  background-color: $color-blue;
+}
+
+.roleUser {
+  color: $color-gray;
+  background-color: $color-light-blue-gray;
+}
+
+.neverLogin {
+  color: $color-red;
+  font-weight: $font-weight-medium;
+}
+
+/* 権限操作ボタン */
+.roleButton {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: $font-weight-medium;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.promote {
+  color: $color-white;
+  background-color: $color-blue;
+  border: 1px solid $color-blue;
+
+  &:hover:not(:disabled) {
+    background-color: $color-blue-hover;
+  }
+}
+
+.demote {
+  color: $color-red;
+  background-color: $color-white;
+  border: 1px solid $color-red;
+
+  &:hover:not(:disabled) {
+    background-color: $color-red;
+    color: $color-white;
+  }
+}
+
+.selfLabel {
+  color: $color-gray;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .pageContainer {
+    padding: 16px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .cardValue {
+    font-size: $font-size-semi-middle;
+  }
+}

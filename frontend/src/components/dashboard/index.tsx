@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useAtomValue } from 'jotai';
+import { userAtom } from '@/store/user';
 import Header from '../base/header';
 import ReservationCalendar from './calendar/ReservationCalendar';
 import ReservationModal from '../reservation/modal';
+import AdminPanel from '../admin';
 import type { ViewType } from '@/constants/type';
 import { PiconLeft, PiconRight } from '@/constants/svgIcon';
 import styles from './index.module.scss';
@@ -16,7 +19,11 @@ interface DashboardProps {
 const VIEW_STORAGE_KEY = 'yoyaku.currentView';
 
 const isViewType = (value: string | null): value is ViewType =>
-  value === 'month' || value === 'week' || value === 'day' || value === 'user';
+  value === 'month' ||
+  value === 'week' ||
+  value === 'day' ||
+  value === 'user' ||
+  value === 'admin';
 
 // firstDayOfWeek: 7 (日曜) に合わせ、currentDate を含む週の日曜日を返す。
 const getWeekStart = (date: Date): Date => {
@@ -46,6 +53,7 @@ const formatPeriodLabel = (view: ViewType, date: Date): string => {
 };
 
 export default function Dashboard({ onLogout }: DashboardProps) {
+  const user = useAtomValue(userAtom);
   const [currentView, setCurrentView] = useState<ViewType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,12 +117,17 @@ export default function Dashboard({ onLogout }: DashboardProps) {
 
   const handleToday = () => setCurrentDate(new Date());
 
+  // カレンダー以外のビュー (マイ予約・管理) では期間ラベルを使わないため month 相当で計算する。
+  const isCalendarView = currentView !== 'user' && currentView !== 'admin';
+
   const periodLabel = useMemo(
-    () => formatPeriodLabel(currentView === 'user' ? 'month' : currentView, currentDate),
-    [currentView, currentDate],
+    () => formatPeriodLabel(isCalendarView ? currentView : 'month', currentDate),
+    [isCalendarView, currentView, currentDate],
   );
 
-  const isCalendarView = currentView !== 'user';
+  // 管理ページは管理者のみ表示する (ヘッダのボタンは admin にしか出ないが、
+  // localStorage 復元などの経路に対する多層防御)。
+  const showAdmin = currentView === 'admin' && user?.role === 'admin';
 
   return (
     <div className={styles.container}>
@@ -172,6 +185,8 @@ export default function Dashboard({ onLogout }: DashboardProps) {
               onDayDetails={handleDayDetails}
               refreshKey={refreshKey}
             />
+          ) : showAdmin ? (
+            <AdminPanel />
           ) : (
             <UserInfo refreshKey={refreshKey} />
           )}

@@ -24,16 +24,24 @@ func main() {
 		log.Fatalf("データベースに接続できませんでした: %v", err)
 	}
 	defer sqlDB.Close()
+
+	// schema.sql に後から追加した列を既存DBへ冪等に反映する (簡易マイグレーション)。
+	if err := utils.EnsureSchema(sqlDB); err != nil {
+		log.Fatalf("スキーマの適用に失敗しました: %v", err)
+	}
+
 	// sql.DBからsqlcのクエリオブジェクトを生成
 	queries := db.New(sqlDB)
 
 	// Service層の初期化
 	authService := service.NewAuthService(queries)
 	reservationService := service.NewReservationService(queries)
+	adminService := service.NewAdminService(queries)
 
 	// Handler層の初期化
 	authHandler := handler.NewAuthHandler(authService)
 	reservationHandler := handler.NewReservationHandler(reservationService)
+	adminHandler := handler.NewAdminHandler(adminService)
 
 	// OAuth設定の初期化
 	if err := auth.Setup(); err != nil {
@@ -111,6 +119,15 @@ func main() {
 					c.JSON(http.StatusBadRequest, gin.H{"error": "有効なクエリパラメータがありません"})
 				}
 			})
+		}
+
+		// 管理者専用のAPI。AdminMiddleware で role=admin 以外を 403 で弾く。
+		admin := api.Group("/admin")
+		admin.Use(utils.AdminMiddleware())
+		{
+			admin.GET("/users", adminHandler.ListUsers)
+			admin.PUT("/users/role", adminHandler.UpdateRole)
+			admin.GET("/reservations", adminHandler.ListReservations)
 		}
 	}
 
