@@ -10,8 +10,13 @@ RUN go mod download
 
 COPY src/ ./
 
-# 静的リンクの amd64 バイナリを生成。
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+# 静的リンクのバイナリを生成。アーキテクチャは BuildKit が渡す TARGETOS/TARGETARCH
+# に従う (CI は --platform linux/amd64、手元の arm64 Mac では arm64)。
+# ここを amd64 に固定すると、arm64 機でのローカル検証ビルドが
+# ランタイムの alpine と食い違い "exec format error" で起動しない。
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /out/yoyaku .
 
 # ---- runtime ----

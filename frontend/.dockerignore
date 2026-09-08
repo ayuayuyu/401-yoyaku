@@ -1,8 +1,15 @@
 node_modules
 .next
+out
 .git
 .DS_Store
 coverage
 npm-debug.log
 pnpm-debug.log
 dist
+*.tsbuildinfo
+
+# 開発用のローカル設定。ビルドコンテキストに入れると
+# NEXT_PUBLIC_* が意図せず本番ビルドに効く恐れがある。
+.env
+.env.*
