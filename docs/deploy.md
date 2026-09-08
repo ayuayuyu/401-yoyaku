@@ -158,7 +158,7 @@ curl -s http://localhost/ | head   # フロントの HTML
 docker compose -p 401-prodtest --env-file ./prod-test.env -f docker-compose.prod.yml down -v
 ```
 
-- `prod-test.env` には `DATABASE_URL` / `SECRET_KEY` / `GOOGLE_*` が要る（[`.env.prod.example`](../.env.prod.example) をコピーしてダミー値で可）。
+- `prod-test.env` には `POSTGRES_*` / `SECRET_KEY` / `GOOGLE_*` が要る（[`.env.prod.example`](../.env.prod.example) をコピーしてダミー値で可）。`DATABASE_URL` は compose が `POSTGRES_*` から組み立てるので書かない。
   backend の `env_file: .env` はルートの `.env` を読むため、`env_file` を差し替える override を併用するか一時的に `.env` を用意する。
 - `backend/Dockerfile` は BuildKit の `TARGETARCH` に従うので、arm64 Mac でもそのまま動く（CI は `--platform linux/amd64`）。
 - OAuth の実挙動は本番ドメインでのみ確認可能。

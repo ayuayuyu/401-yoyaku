@@ -30,6 +30,13 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # DATABASE_URL は .env に手書きさせず、POSTGRES_* から組み立てる。
+    # 手書きだと (1) POSTGRES_PASSWORD との不一致 (2) 長い1行の折り返し崩れ が起きやすく、
+    # 実際に本番で「値が空のまま起動 → 0.5秒で log.Fatal」を招いた。
+    # environment は env_file より優先されるため、.env に古い DATABASE_URL が残っていても
+    # こちらが勝つ。パスワードに @ : / ? # を使うと URL が壊れるので英数字にすること。
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-app}?sslmode=disable&TimeZone=Asia%2FTokyo"
     depends_on:
       db:
         condition: service_healthy
@@ -38,6 +45,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      # 起動直後の数秒はまだ listen していない。ここが無いと最初の失敗が即カウントされる。
+      start_period: 10s
 
   nginx:
     image: ghcr.io/ayuayuyu/401-yoyaku-frontend:latest

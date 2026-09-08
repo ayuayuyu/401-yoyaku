@@ -38,6 +38,8 @@ services:
       - .env
     environment:
       PORT: 8080
+      # 本番と同じく POSTGRES_* から組み立てる (.env に手書きさせない)。
+      DATABASE_URL: "postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-app}?sslmode=disable&TimeZone=Asia%2FTokyo"
     tty: true
     depends_on:
       db:
