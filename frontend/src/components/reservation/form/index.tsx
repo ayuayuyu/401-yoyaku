@@ -205,6 +205,9 @@ const ReservationForm = ({
             onChange={handleChange}
             required
           />
+          <p className={styles.fieldNote}>
+            ※ 予約タイトルは他の方には表示されません。
+          </p>
         </div>
 
         <div className={styles.formRow}>
