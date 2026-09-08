@@ -54,22 +54,22 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
    ```bash
    git clone https://github.com/ayuayuyu/401-yoyaku.git
    cd 401-yoyaku
-   bash scripts/setup-container.sh   # Docker 導入 + ~/.401-yoyaku.env 雛形作成
+   bash scripts/setup-container.sh   # Docker 導入 + /etc/401-yoyaku/.env 雛形作成
    ```
    Docker グループ反映のため一度入り直す。
 
-4. `~/.401-yoyaku.env` を編集して本番値を設定（[`.env.prod.example`](../.env.prod.example) 参照）。
+4. `/etc/401-yoyaku/.env` を編集して本番値を設定（[`.env.prod.example`](../.env.prod.example) 参照）。
 
 ---
 
 ## 2. Cloudflare Tunnel
 
 1. Cloudflare Zero Trust → **Networks → Tunnels → Create a tunnel**（Cloudflared 型）。
-2. 発行された **トークン**を `~/.401-yoyaku.env` の `TUNNEL_TOKEN` に設定。
+2. 発行された **トークン**を `/etc/401-yoyaku/.env` の `TUNNEL_TOKEN` に設定。
 3. **Public hostname** を追加:
-   - Subdomain/Domain: 例 `reserve.example.com`
+   - Subdomain/Domain: `yoyaku.ayuayuyu.dev`
    - Service: **`http://nginx:80`**（cloudflared は同じ compose ネットワークにいるためサービス名で解決）
-4. この公開URL（`https://reserve.example.com`）を `.env` の `FRONTEND_URL` と
+4. この公開URL（`https://yoyaku.ayuayuyu.dev`）を `.env` の `FRONTEND_URL` と
    `GOOGLE_REDIRECT_URL`(`.../callback`) に反映。
 
 ---
@@ -78,8 +78,8 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
 
 プロジェクト（例: 65271644036）の OAuth クライアントに本番URLを登録:
 
-- **承認済みリダイレクト URI**: `https://reserve.example.com/callback`
-- **承認済み JavaScript 生成元**: `https://reserve.example.com`
+- **承認済みリダイレクト URI**: `https://yoyaku.ayuayuyu.dev/callback`
+- **承認済み JavaScript 生成元**: `https://yoyaku.ayuayuyu.dev`
 - OAuth 同意画面: **本番公開**、**Google Calendar API 有効化**（カレンダー連携を使う場合）。
 
 ---
@@ -111,12 +111,12 @@ push → CI (lint/型/test/build) → build-images (GHCR へ amd64 イメージ)
 
 ```bash
 cd ~/401-yoyaku
-cp ~/.401-yoyaku.env .env
+cp /etc/401-yoyaku/.env .env
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-`https://reserve.example.com/` を開き、Google ログイン → ダッシュボード表示を確認。
+`https://yoyaku.ayuayuyu.dev/` を開き、Google ログイン → ダッシュボード表示を確認。
 
 ---
 
