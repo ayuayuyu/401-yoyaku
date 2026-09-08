@@ -1,17 +1,26 @@
-# 401号室予約管理アプリケーション バックエンド及びデータベース
+# 401号室予約管理アプリケーション バックエンド
 
-このリポジトリは、401号室の予約を管理するアプリケーションのバックエンドおよびデータベース構成を提供します。  
-バックエンドには Go 言語を用いた REST API を採用しており、  
-データベースには MySQL を使用し、コード生成には `sqlc` を利用しています。  
-また、Docker を用いることで、バックエンド・DB・フロントエンドをまとめて立ち上げられます。
+401号室の予約を管理するアプリケーションの REST API です。
+Go (Gin) + PostgreSQL、SQL からのコード生成に `sqlc` を使用しています。
+
+> リポジトリ全体の構成・アーキテクチャは [../CLAUDE.md](../CLAUDE.md) を参照。
 
 ---
 
 ## セットアップ手順
 
+### 0. 環境変数
+
+env ファイルは**リポジトリ直下の `.env` 1つ**に集約しています（`backend/.env` は置きません）。
+
+```bash
+cd ..
+cp .env.example .env   # 値を埋める
+```
+
 ### 1. コードの自動生成
 
-SQLファイルからGoコードを自動生成します。
+`src/db/query.sql` から Go コードを生成します。生成物 (`query.sql.go`) は手で編集しません。
 
 ```bash
 cd src
@@ -20,39 +29,44 @@ sqlc generate
 
 ### 2. Docker コンテナの起動
 
-`yoyaku-backendo` と同階層に `yoyaku-frontend` がある状態で、
-以下のコマンドを実行します。
+リポジトリ直下で:
 
 ```bash
-cd ..
 make up
 ```
 
-- `Makefile` の `make up` により、バックエンド (`http://localhost:8080`)・
-  フロントエンド (`http://localhost:3000`)・MySQL が起動します。
+バックエンド (`http://localhost:8080`)・フロントエンド (`http://localhost:3000`)・
+PostgreSQL (`localhost:55432`) がまとめて起動します。ホットリロードは Air。
 
 ### 3. テーブルの作成
 
-スキーマ定義ファイルからテーブルを作成します。
+`src/db/schema.sql` は初回起動時に `docker-entrypoint-initdb.d` 経由で自動適用されます。
+手動で流す場合:
 
 ```bash
-mysql -u user -p -h 127.0.0.1 -P 53306 app < src/db/schema.sql
+psql -h 127.0.0.1 -p 55432 -U user -d app -f src/db/schema.sql
 ```
 
-- `users`テーブルと`reservations`テーブルを作成する．
+> カラムを追加するときは `schema.sql` と `utils.EnsureSchema` の**両方**を更新します
+> （マイグレーション基盤は未導入）。
 
-### 4. MySQL に接続
-
-MySQL クライアントでデータベースに接続します。
+### 4. PostgreSQL に接続
 
 ```bash
-mysql -u user -p -h 127.0.0.1 -P 53306 app
+make login   # docker compose exec db psql
 ```
 
-### Docker の停止
-
-開発終了時はコンテナを停止・削除します。
+### 停止
 
 ```bash
 make down
+```
+
+---
+
+## テスト
+
+```bash
+cd src
+go test ./...
 ```

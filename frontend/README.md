@@ -19,5 +19,10 @@ pnpm run dev
 
 ## Docker起動
 
-`yoyaku-backendo` の `docker-compose.yaml` からフロントエンドも同時に起動できます。  
-（`yoyaku-backendo` と同階層にこのリポジトリがある前提）
+リポジトリ直下の `docker-compose.yaml` でバックエンド・DB と同時に起動できます。
+
+```bash
+cd ..
+cp .env.example .env   # 初回のみ。env はリポジトリ直下の .env に集約している
+make up
+```
