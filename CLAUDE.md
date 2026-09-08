@@ -10,8 +10,8 @@
 
 | ディレクトリ | 役割 | スタック |
 |---|---|---|
-| [yoyaku-frontend/](yoyaku-frontend/) | Web UI | Next.js 15 (App Router) / React 19 / TypeScript / Schedule-X / Jotai |
-| [yoyaku-backendo/](yoyaku-backendo/) | REST API | Go / Gin / sqlc / PostgreSQL / Google OAuth |
+| [frontend/](frontend/) | Web UI | Next.js 15 (App Router) / React 19 / TypeScript / Schedule-X / Jotai |
+| [backend/](backend/) | REST API | Go / Gin / sqlc / PostgreSQL / Google OAuth |
 
 `docker-compose.yaml` でフロント・バック・DB をまとめて起動できる。
 
@@ -22,14 +22,16 @@
 ### 全体起動 (Docker)
 
 ```bash
-make -C yoyaku-backendo up      # build & up (backend + frontend + postgres)
-make -C yoyaku-backendo down    # down
-make -C yoyaku-backendo logs    # follow logs
+cp .env.example .env   # 初回のみ。値を埋める
+make up                # build & up (backend + frontend + postgres)
+make down              # down
+make logs              # follow logs
+make help              # ターゲット一覧
 ```
 
 ポート: フロント `3000`、バックエンド `8080`、PostgreSQL `55432`。
 
-### フロントエンド単独 ([yoyaku-frontend/](yoyaku-frontend/))
+### フロントエンド単独 ([frontend/](frontend/))
 
 ```bash
 pnpm install
@@ -40,10 +42,10 @@ pnpm lint
 
 > 注意: Dockerfile は `npm ci` を使うため `package-lock.json` も保持している。ローカル開発は `pnpm` 推奨。
 
-### バックエンド単独 ([yoyaku-backendo/src/](yoyaku-backendo/src/))
+### バックエンド単独 ([backend/src/](backend/src/))
 
 ```bash
-cd yoyaku-backendo/src
+cd backend/src
 sqlc generate     # query.sql → query.sql.go
 go test ./...
 go run .
@@ -55,7 +57,7 @@ go run .
 
 ## アーキテクチャ
 
-### バックエンド ([yoyaku-backendo/src/](yoyaku-backendo/src/))
+### バックエンド ([backend/src/](backend/src/))
 
 レイヤー構成:
 
@@ -68,7 +70,7 @@ utils/    ← DB 接続・認証ヘルパ
 types/    ← リクエスト型
 ```
 
-- エントリポイント: [main.go](yoyaku-backendo/src/main.go) — Gin ルーティング、CORS、セッション
+- エントリポイント: [main.go](backend/src/main.go) — Gin ルーティング、CORS、セッション
 - セッション: `gorilla/sessions` の Cookie ストア (`SECRET_KEY` 必須)
 - 認証: Google OAuth 2.0 (`auth/google_oauth.go`)
 - DB アクセス: sqlc 経由のみ (生クエリは `db/query.sql` に集約)
@@ -92,7 +94,7 @@ types/    ← リクエスト型
 
 > `/api/admin/*` は `AdminMiddleware` で保護され、role=admin 以外は 403。role は DB を正とする。
 
-### フロントエンド ([yoyaku-frontend/src/](yoyaku-frontend/src/))
+### フロントエンド ([frontend/src/](frontend/src/))
 
 - **ルーティング**: App Router、`output: 'export'` で静的書き出し
 - **UI 状態**: ローカル `useState` 中心、認証ユーザのみ Jotai (`store/user.ts`)
@@ -123,32 +125,45 @@ src/styles/              ← グローバル + 共通モジュール
 src/instrumentation.ts   ← SSR 時の localStorage シム (Next.js 自動ロード)
 ```
 
-### データモデル ([schema.sql](yoyaku-backendo/src/db/schema.sql))
+### データモデル ([schema.sql](backend/src/db/schema.sql))
 
 - `users` — `id, name, email, google_id, avatar_url, role`、論理削除 (`deleted_at`)
 - `reservations` — `id, user_id, title, start_time, end_time, status`、複合インデックス `(start_time, end_time)`
 
 ### 環境変数
 
-**バックエンド** (docker-compose.yaml で注入):
+**env ファイルはリポジトリ直下の `.env` 1つに集約する。** サービスごとの
+`backend/.env` / `frontend/.env` は置かない (2026-09-08 に廃止)。
 
-```
-DATABASE_URL                  postgres://user:password@db:5432/app?...
-SECRET_KEY                    セッション署名キー (必須)
-GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET
-FRONTEND_URL                  http://localhost:3000
-GOOGLE_CALENDAR_SYNC_ENABLED  Google Calendar 同期 (今後)
-SLACK_NOTIFY_ENABLED          Slack 通知の有効化 (予約作成/キャンセル時に Webhook 送信)
-SLACK_WEBHOOK_URL             Slack Incoming Webhook の URL (通知有効時に必須)
-ADMIN_EMAILS                  初期管理者メール (カンマ区切り)。ログイン時に admin へ自動昇格
-```
+| 用途 | 実ファイル | 雛形 (追跡) |
+|---|---|---|
+| 開発 | `./.env` | [.env.example](.env.example) |
+| 本番 (LXC) | `/etc/401-yoyaku/.env` | [.env.prod.example](.env.prod.example) |
 
-**フロントエンド** (`yoyaku-frontend/.env`):
+配り方:
 
-```
-NEXT_PUBLIC_API_URL           http://localhost:8080
-```
+- **backend**: compose の `env_file: .env` でファイルごと注入
+- **frontend**: 必要なのは `NEXT_PUBLIC_API_URL` だけなので、compose の
+  `environment:` で 1 変数だけ明示的に渡す (シークレットをブラウザ側のビルドに
+  近づけない)
+- **db**: `${POSTGRES_*}` を compose が `.env` から展開
+- ホストで `pnpm dev` する場合は Next が自分のディレクトリの `.env` しか読まないため、
+  [next.config.ts](frontend/next.config.ts) がルートの `.env` から `NEXT_PUBLIC_API_URL` を補う
+
+| キー | 説明 |
+|---|---|
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | db サービス。`DATABASE_URL` と一致させる |
+| `DATABASE_URL` | `postgres://user:password@db:5432/app?...` |
+| `SECRET_KEY` | セッション署名キー (必須。未設定なら起動時に `log.Fatalf`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | 必須。未設定なら `auth.Setup()` がエラー |
+| `GOOGLE_REDIRECT_URL` | 未設定時は `http://localhost:8080/callback` |
+| `FRONTEND_URL` | 未設定時は `http://localhost:3000`。CORS 許可オリジン |
+| `COOKIE_SECURE` | `true` で Secure Cookie。本番 (HTTPS) のみ |
+| `NEXT_PUBLIC_API_URL` | フロントの API ベース URL。本番は空文字 = same-origin |
+| `ADMIN_EMAILS` | 初期管理者メール (カンマ区切り)。ログイン時に admin へ自動昇格 |
+| `SLACK_NOTIFY_ENABLED` / `SLACK_WEBHOOK_URL` | Slack 通知 (予約作成/キャンセル時) |
+| `GOOGLE_CALENDAR_SYNC_ENABLED` / `GOOGLE_CALENDAR_ID` / `GOOGLE_SERVICE_ACCOUNT_JSON` | 共有カレンダー同期 (任意) |
+| `TUNNEL_TOKEN` | 本番のみ。Cloudflare Tunnel |
 
 ---
 
@@ -191,8 +206,10 @@ NEXT_PUBLIC_API_URL           http://localhost:8080
 
 ## 注意点
 
-- [yoyaku-backendo/README.md](yoyaku-backendo/README.md) には MySQL と書かれているが実装は **PostgreSQL**。READMEの記述は古い
-- `docker-compose.yaml` には `GOOGLE_CLIENT_SECRET` が直書きされている。本番に出す前に環境変数化が必要
+- [backend/README.md](backend/README.md) には MySQL と書かれているが実装は **PostgreSQL**。README の記述は古い
+- `docker-compose.yaml` に直書きされていた `GOOGLE_CLIENT_SECRET` は `.env` へ移した。
+  ただし **public リポジトリの履歴には残っている**ため、Google Cloud Console 側での
+  シークレット再発行 (ローテーション) が必要
 - Air のビルド成果物 (`src/tmp/`, `src/yoyaku`) は `.gitignore` 済み
 
 ---

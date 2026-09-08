@@ -1,0 +1,8 @@
+# 環境変数。開発は .env、本番は LXC の /etc/401-yoyaku/.env に置く。
+# 雛形 (*.example) だけを追跡する。
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+.DS_Store

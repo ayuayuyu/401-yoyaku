@@ -27,9 +27,9 @@ logs:
 ps:
 	docker compose ps
 
-## login: PostgreSQL (db) に psql で接続
+## login: PostgreSQL (db) に psql で接続 (接続先は .env の POSTGRES_*)
 login:
-	docker compose exec db psql -U user -d app
+	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 ## sqlc: query.sql から query.sql.go を生成
 sqlc:

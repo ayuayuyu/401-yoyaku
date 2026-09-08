@@ -126,5 +126,5 @@
 
 - [CLAUDE.md](CLAUDE.md) — プロジェクトの構造とコマンド
 - [todo.md](todo.md) — 未対応タスク一覧
-- [yoyaku-backendo/README.md](yoyaku-backendo/README.md) — バックエンドのセットアップ手順 (一部古い記述あり)
-- [yoyaku-frontend/README.md](yoyaku-frontend/README.md) — フロントのセットアップ手順
+- [backend/README.md](backend/README.md) — バックエンドのセットアップ手順
+- [frontend/README.md](frontend/README.md) — フロントのセットアップ手順
