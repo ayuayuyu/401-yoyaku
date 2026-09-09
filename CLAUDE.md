@@ -163,7 +163,7 @@ src/instrumentation.ts   ← SSR 時の localStorage シム (Next.js 自動ロ�
 | `ADMIN_EMAILS` | 初期管理者メール (カンマ区切り)。ログイン時に admin へ自動昇格 |
 | `SLACK_NOTIFY_ENABLED` / `SLACK_WEBHOOK_URL` | Slack 通知 (予約作成/キャンセル時) |
 | `GOOGLE_CALENDAR_SYNC_ENABLED` / `GOOGLE_CALENDAR_ID` / `GOOGLE_SERVICE_ACCOUNT_JSON` | 共有カレンダー同期 (任意) |
-| `TUNNEL_TOKEN` | 本番のみ。Cloudflare Tunnel |
+| ~~`TUNNEL_TOKEN`~~ | **`.env` に書かない。** cloudflared は compose ではなく LXC ホストの systemd サービスで動かし、トークンは `cloudflared service install` が `/etc/cloudflared/` に保存する |
 
 ---
 

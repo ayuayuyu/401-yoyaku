@@ -87,7 +87,6 @@ jobs:
           require GOOGLE_CLIENT_SECRET  xxxxxxxxxxxx
           require GOOGLE_REDIRECT_URL
           require FRONTEND_URL
-          require TUNNEL_TOKEN          eyJhIjoi...
 
           if [ "$(val SLACK_NOTIFY_ENABLED)" = "true" ]; then
             require SLACK_WEBHOOK_URL https://hooks.slack.com/services/xxx/yyy/zzz
