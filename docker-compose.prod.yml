@@ -1,6 +1,7 @@
 # 本番 (Proxmox VE の LXC コンテナ) 用 compose。
 # self-hosted runner が GHCR からイメージを pull して起動する。
-# 外部公開は cloudflared (Cloudflare Tunnel) 経由。ポートは開けない。
+# 外部公開は Cloudflare Tunnel 経由。cloudflared はこの compose には含めず、
+# LXC ホスト上の systemd サービスとして動かす (Service: http://localhost:80)。
 #
 # 必要な環境変数はコンテナ内の .env で与える (.env.prod.example 参照)。
 
@@ -56,21 +57,14 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ""
     restart: unless-stopped
-    # 外部公開は cloudflared 経由。ホスト localhost からの検証用にのみ束ねる。
+    # 外部公開は cloudflared 経由。cloudflared は compose ではなく LXC ホスト上の
+    # systemd サービスとして動かし、Public hostname の Service に http://localhost:80
+    # を指定してここへ流す。127.0.0.1 に束ねているので外部には直接開かない。
     ports:
       - "127.0.0.1:80:80"
     depends_on:
       backend:
         condition: service_healthy
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
-    depends_on:
-      - nginx
 
 volumes:
   pg_data:

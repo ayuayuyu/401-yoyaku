@@ -87,7 +87,6 @@ jobs:
           require GOOGLE_CLIENT_SECRET  xxxxxxxxxxxx
           require GOOGLE_REDIRECT_URL
           require FRONTEND_URL
-          require TUNNEL_TOKEN          eyJhIjoi...
 
           if [ "$(val SLACK_NOTIFY_ENABLED)" = "true" ]; then
             require SLACK_WEBHOOK_URL https://hooks.slack.com/services/xxx/yyy/zzz
@@ -102,7 +101,29 @@ jobs:
             ERR=1
           fi
 
-          [ "$ERR" -eq 0 ] || exit 1
+          if [ "$ERR" -ne 0 ]; then
+            # 「ファイルには書いてあるのに全部空」という状況は、貼り付けで改行が
+            # 失われて全体が1行に潰れているときに起きる。1行目が # で始まると
+            # 書式チェックはコメント扱いで通ってしまい、原因が見えないまま
+            # 「値が空」だけが延々と出る。構造を出して一発で分かるようにする。
+            LINES=$(wc -l < .env | tr -d ' ')
+            BYTES=$(wc -c < .env | tr -d ' ')
+            KEYS=$(grep -cE '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=' .env || true)
+
+            echo "::group::.env の構造 (値は表示しません)"
+            echo "  行数: ${LINES} / バイト数: ${BYTES} / 認識できたキー: ${KEYS}"
+            echo "  キー一覧:"
+            grep -oE '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=' .env \
+              | tr -d ' =' | sed 's/^/    /' || echo "    (なし)"
+            echo "::endgroup::"
+
+            if [ "${KEYS}" -eq 0 ] && [ "${BYTES}" -gt 200 ]; then
+              echo "::error::.env に KEY=VALUE の行が1つもありません (${BYTES} バイトあるのに ${LINES} 行)。"
+              echo "::error::改行が失われて全体が1行に潰れている可能性が高いです。端末への貼り付けが原因になりがちです。"
+              echo "::error::対処: LXC 内で 'cd ~/401-yoyaku && git pull && install -m 600 .env.prod.example /etc/401-yoyaku/.env' してから値を編集してください。"
+            fi
+            exit 1
+          fi
           echo "必須の環境変数はすべて設定されています。"
 
       - name: Login to GHCR

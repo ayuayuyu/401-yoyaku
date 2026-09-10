@@ -16,7 +16,7 @@ Internet
 Cloudflare (TLS 終端)
   │  Tunnel
   ▼
-cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static export)
+cloudflared ──► localhost:80 (nginx) ─┬─► / (静的フロント: Next static export)
  (compose)                └─► /api,/login,/callback,/health ─► backend:8080 ─► db:5432
 ```
 
@@ -64,13 +64,38 @@ cloudflared ──► nginx:80 ─┬─► / (静的フロント: Next static e
 
 ## 2. Cloudflare Tunnel
 
+cloudflared は **compose ではなく LXC ホスト上の systemd サービス**として動かす。
+compose 内に置くと Public hostname の service をサービス名 `http://nginx:80` にする必要があり、
+ホストからの検証と設定が食い違う。ホスト常駐なら `http://localhost:80`（nginx が
+`127.0.0.1:80` に publish しているポート）で統一できる。
+
 1. Cloudflare Zero Trust → **Networks → Tunnels → Create a tunnel**（Cloudflared 型）。
-2. 発行された **トークン**を `/etc/401-yoyaku/.env` の `TUNNEL_TOKEN` に設定。
-3. **Public hostname** を追加:
+2. **Public hostname** を追加:
    - Subdomain/Domain: `yoyaku.ayuayuyu.dev`
-   - Service: **`http://nginx:80`**（cloudflared は同じ compose ネットワークにいるためサービス名で解決）
-4. この公開URL（`https://yoyaku.ayuayuyu.dev`）を `.env` の `FRONTEND_URL` と
+   - Service: **`http://localhost:80`**
+3. 発行された **トークン**で LXC 内に cloudflared を常駐させる:
+
+   ```bash
+   # Debian/Ubuntu
+   curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+     | tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+   echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' \
+     | tee /etc/apt/sources.list.d/cloudflared.list
+   apt-get update && apt-get install -y cloudflared
+
+   cloudflared service install <TOKEN>     # /etc/cloudflared/ に保存され systemd 登録される
+   systemctl status cloudflared
+   ```
+
+   > トークンは `.env` には書かない。`cloudflared service install` が保持する。
+
+4. この公開URL（`https://yoyaku.ayuayuyu.dev`）を `/etc/401-yoyaku/.env` の `FRONTEND_URL` と
    `GOOGLE_REDIRECT_URL`(`.../callback`) に反映。
+
+> **cloudflared を二重に動かさないこと。** compose 側にも cloudflared がいると、
+> 片方が無効なトークンで再起動を繰り返し原因の切り分けが困難になる。
+> 以前 compose に含めていたので、残っていれば
+> `docker compose -f docker-compose.prod.yml up -d --remove-orphans` で除去される。
 
 ---
 
@@ -135,7 +160,8 @@ curl -sf http://localhost/health
 |---|---|
 | ログインで `redirect_uri_mismatch` | Cloud Console のリダイレクトURI と `GOOGLE_REDIRECT_URL` の一致 |
 | ログイン後すぐログアウト状態 | `COOKIE_SECURE=true` か（HTTPS 必須）、`FRONTEND_URL` が実ドメインか |
-| 502 / トンネルは繋がるが表示されない | Public hostname の service が `http://nginx:80` か、`nginx`/`backend` が healthy か |
+| 502 / トンネルは繋がるが表示されない | Public hostname の service が `http://localhost:80` か、`nginx`/`backend` が healthy か |
+| `Provided Tunnel token is not valid.` | `systemctl status cloudflared` で常駐版を確認。compose 側に残骸の cloudflared がいないか `docker ps` で確認 |
 | デプロイが走らない | runner がオンラインか（`svc.sh status`）、build-images が緑か |
 | `Cannot connect to the Docker daemon` | LXC の nesting/keyctl（手順1-1）。`journalctl -u docker -n 20` |
 | runner 設定が `Couldn't find a valid ICU package` で落ちる | `bin/installdependencies.sh` が走ったか（setup-runner.sh が実行する）|
